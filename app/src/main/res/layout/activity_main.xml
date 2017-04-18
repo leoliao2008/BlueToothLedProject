@@ -13,4 +13,20 @@
        android:padding="@dimen/margin_small"
        android:layout_width="match_parent"
        android:layout_height="wrap_content"/>
+    <TextView
+        android:id="@+id/main_tv_timing"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/shape_type_1"
+        android:text="00:00.00"
+        android:textSize="@dimen/text_size_type_2"
+        android:gravity="center"
+        android:layout_margin="@dimen/margin_small"/>
+    <ListView
+        android:id="@+id/main_lstv_control_record"
+        android:background="@drawable/shape_type_1"
+        android:layout_margin="@dimen/margin_small"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
 </LinearLayout>

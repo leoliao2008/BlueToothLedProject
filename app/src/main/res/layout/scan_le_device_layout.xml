@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/colorWhite"
+    >
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:layout_gravity="center"
+        >
+
+        <TextView
+            android:id="@+id/main_tv_dev_name"
+            android:padding="@dimen/padding_type_1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Device Name"
+            android:textColor="@color/colorBlack"
+            android:textSize="@dimen/text_size_type_1"/>
+
+        <TextView
+            android:id="@+id/main_tv_dev_address"
+            android:padding="@dimen/padding_type_1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Device Address"
+            android:textColor="@color/colorBlack"
+            android:textSize="@dimen/text_size_type_1"/>
+
+
+
+        <TextView
+            android:id="@+id/main_tv_dev_type"
+            android:padding="@dimen/padding_type_1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Device Type"
+            android:textColor="@color/colorBlack"
+            android:textSize="@dimen/text_size_type_1"/>
+
+        <TextView
+            android:id="@+id/main_tv_dev_rssi"
+            android:padding="@dimen/padding_type_1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Device RSSI"
+            android:textColor="@color/colorBlack"
+            android:textSize="@dimen/text_size_type_1"/>
+
+        <TextView
+            android:id="@+id/main_tv_dev_status"
+            android:padding="@dimen/padding_type_1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Device Status"
+            android:textColor="@color/colorBlack"
+            android:textSize="@dimen/text_size_type_1"/>
+
+        <Button
+            android:id="@+id/main_btn_connect_gatt"
+            android:text="Connect"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+    </LinearLayout>
+
+    <FrameLayout
+        android:visibility="gone"
+        android:id="@+id/main_fl_mask_scanning"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:background="@color/colorWhite">
+        <ProgressBar
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:indeterminate="true"/>
+    </FrameLayout>
+
+</FrameLayout>
