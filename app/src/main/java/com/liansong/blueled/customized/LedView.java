@@ -1,12 +1,18 @@
 package com.liansong.blueled.customized;
 
+import android.animation.Animator;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.os.Build;
 import android.support.annotation.Nullable;
+import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.view.View;
+
+import com.liansong.blueled.R;
 
 /**
  * Created by 廖华凯 on 2017/4/17.
@@ -16,9 +22,12 @@ public class LedView extends View {
     private int mDiameter;
     private int mRadius;
     private Paint mPaint;
-    private Paint mTextPaint;
+    private TextPaint mTextPaint;
     private int mColor;
     private String mText;
+    private float[] textWidths=new float[1];
+    private boolean isLit;
+
     public LedView(Context context,int diameter,String text) {
         this(context,diameter,text,null);
     }
@@ -30,12 +39,14 @@ public class LedView extends View {
     public LedView(Context context, int diameter, String text, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         mDiameter =diameter;
-        mText=text;
+        mText=String.copyValueOf(text.toCharArray(),0,1);
         mRadius =diameter/2;
         mPaint=new Paint(Paint.ANTI_ALIAS_FLAG);
         mColor=Color.WHITE;
         mPaint.setColor(mColor);
-        mTextPaint=new Paint();
+        mTextPaint=new TextPaint();
+        mTextPaint.setTextSize(getResources().getDimensionPixelSize(R.dimen.text_size_type_1));
+        mTextPaint.setFlags(TextPaint.ANTI_ALIAS_FLAG);
         mTextPaint.setColor(Color.BLACK);
     }
 
@@ -45,20 +56,63 @@ public class LedView extends View {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
     }
 
-    public void toggleColor(){
-        if(mColor==Color.WHITE){
-            mColor=Color.YELLOW;
+    public synchronized void toggleColor(boolean isToLit){
+        if(isToLit){
+            animateColorFading(Color.WHITE,Color.YELLOW);
         }else {
-            mColor=Color.WHITE;
+            animateColorFading(Color.YELLOW,Color.WHITE);
         }
-        mPaint.setColor(mColor);
-        invalidate();
+    }
+
+    private void animateColorFading(final int fromColor, int toColor){
+        ValueAnimator animator;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            animator=ValueAnimator.ofArgb(fromColor,toColor);
+        }else {
+            animator=ValueAnimator.ofInt(fromColor,toColor);
+        }
+        animator.setDuration(500);
+        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                mPaint.setColor((Integer) animation.getAnimatedValue());
+                invalidate();
+            }
+
+        });
+        animator.addListener(new Animator.AnimatorListener() {
+            @Override
+            public void onAnimationStart(Animator animation) {
+
+            }
+
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                isLit=!isLit;
+            }
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+
+            }
+
+            @Override
+            public void onAnimationRepeat(Animator animation) {
+
+            }
+        });
+        animator.start();
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         canvas.drawCircle(mRadius, mRadius, mRadius,mPaint);
-        canvas.drawText(mText.toCharArray(),0,1,0,0,mTextPaint);
+        mTextPaint.getTextWidths(mText,textWidths);
+        canvas.drawText(mText, mRadius - (textWidths[0] / 2+0.5f),mRadius + (textWidths[0] / 2+0.5f),mTextPaint);
+    }
+
+    public boolean isLit() {
+        return isLit;
     }
 }
