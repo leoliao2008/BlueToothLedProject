@@ -1,6 +1,9 @@
 package com.liansong.blueled.activities;
 
 import android.app.Activity;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
@@ -15,11 +18,11 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import com.liansong.blueled.R;
-import com.liansong.blueled.bases.BaseActivity;
+import com.liansong.blueled.bases.BlueToothActivity;
 
 import java.util.ArrayList;
 
-public class MainActivity extends BaseActivity {
+public class MainActivity extends BlueToothActivity {
     private ListView lstv_record;
     private TextView tv_timing;
     private ArrayAdapter<String> mAdapter;
@@ -39,7 +42,6 @@ public class MainActivity extends BaseActivity {
     protected void initView() {
         lstv_record= (ListView) findViewById(R.id.main_lstv_control_record);
         tv_timing= (TextView) findViewById(R.id.main_tv_timing);
-
     }
 
     @Override
@@ -96,8 +98,33 @@ public class MainActivity extends BaseActivity {
     }
 
 
+    @Override
+    protected BluetoothGattCallback initBlueToothGattCallBack() {
+        return new BluetoothGattCallback() {
+            @Override
+            public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+                super.onConnectionStateChange(gatt, status, newState);
+            }
 
+            @Override
+            public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+                super.onServicesDiscovered(gatt, status);
+            }
 
+            @Override
+            public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+                super.onCharacteristicRead(gatt, characteristic, status);
+            }
 
+            @Override
+            public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+                super.onCharacteristicWrite(gatt, characteristic, status);
+            }
 
+            @Override
+            public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+                super.onCharacteristicChanged(gatt, characteristic);
+            }
+        };
+    }
 }

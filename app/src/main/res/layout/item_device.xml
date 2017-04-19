@@ -1,18 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:gravity="center"
+    android:orientation="horizontal"
     android:background="@color/colorWhite"
+    android:layout_margin="@dimen/margin_small"
     >
 
     <LinearLayout
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
+        android:layout_weight="1"
         android:layout_height="wrap_content"
-        android:gravity="center_horizontal"
         android:orientation="vertical"
-        android:layout_gravity="center"
-        >
+        android:gravity="start">
 
         <TextView
             android:id="@+id/main_tv_dev_name"
@@ -61,26 +63,14 @@
             android:textColor="@color/colorBlack"
             android:textSize="@dimen/text_size_type_1"/>
 
-        <Button
-            android:id="@+id/main_btn_connect_gatt"
-            android:text="Connect"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-
     </LinearLayout>
 
-    <FrameLayout
-        android:visibility="gone"
-        android:id="@+id/main_fl_mask_scanning"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_gravity="center"
-        android:background="@color/colorWhite">
-        <ProgressBar
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:indeterminate="true"/>
-    </FrameLayout>
 
-</FrameLayout>
+
+    <Button
+        android:id="@+id/main_btn_connect_gatt"
+        android:text="Connect"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+</LinearLayout>

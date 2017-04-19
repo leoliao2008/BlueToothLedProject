@@ -4,4 +4,6 @@
     <dimen name="text_size_type_1">15sp</dimen>
     <dimen name="text_size_type_2">50sp</dimen>
     <dimen name="padding_type_1">5dp</dimen>
+    <dimen name="text_size_type_3">25sp</dimen>
+    <dimen name="padding_type_2">10dp</dimen>
 </resources>
