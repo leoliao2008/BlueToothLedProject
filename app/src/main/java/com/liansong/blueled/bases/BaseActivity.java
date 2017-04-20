@@ -5,6 +5,7 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 
 import com.liansong.blueled.utils.AlertDialogueUtils;
+import com.liansong.blueled.utils.LogUtil;
 import com.liansong.blueled.utils.ToastUtil;
 
 /**
@@ -48,5 +49,9 @@ public abstract class BaseActivity extends AppCompatActivity {
 
     protected void showToast(String msg){
         ToastUtil.showToast(msg);
+    }
+
+    protected void showLog(String msg){
+        LogUtil.showLog(BaseActivity.class.getSimpleName(),msg);
     }
 }

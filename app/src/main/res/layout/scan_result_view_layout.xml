@@ -44,6 +44,13 @@
         android:orientation="horizontal">
 
         <Button
+            android:id="@+id/scan_result_stop_scan"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="Stop Scan"/>
+
+        <Button
             android:id="@+id/scan_result_retry"
             android:layout_width="0dp"
             android:layout_weight="1"

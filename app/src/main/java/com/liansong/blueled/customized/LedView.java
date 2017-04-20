@@ -64,6 +64,7 @@ public class LedView extends View {
         }
     }
 
+
     private void animateColorFading(final int fromColor, int toColor){
         ValueAnimator animator;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -115,4 +116,6 @@ public class LedView extends View {
     public boolean isLit() {
         return isLit;
     }
+
+
 }

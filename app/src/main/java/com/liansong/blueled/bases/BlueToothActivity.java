@@ -2,6 +2,7 @@ package com.liansong.blueled.bases;
 
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothManager;
 import android.content.Intent;
@@ -15,7 +16,7 @@ import android.widget.Toast;
 
 import com.liansong.blueled.utils.AlertDialogueUtils;
 
-import java.util.UUID;
+import csh.tiro.cc.aes;
 
 /**
  * Created by 廖华凯 on 2017/4/17.
@@ -28,13 +29,16 @@ public abstract class BlueToothActivity extends BaseActivity {
     private BluetoothAdapter mBluetoothAdapter;
     private BluetoothManager mBluetoothManager;
     private boolean isBlueToothReady;
-    private UUID[] mUUIDs=new UUID[]{UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")};
     private static final String[] PERMISSIONS = new String[]{Manifest.permission.ACCESS_FINE_LOCATION};
+    private BluetoothGattCallback mBluetoothGattCallback;
+    private BluetoothGatt mBluetoothGatt;
 
 
     @Override
     protected void onPostCreate(@Nullable Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
+        mBluetoothGattCallback=initBlueToothGattCallBack();
+        aes.keyExpansionDefault();
         requestPermissions();
     }
 
@@ -60,7 +64,8 @@ public abstract class BlueToothActivity extends BaseActivity {
     }
 
     private void startScanLeDevices() {
-        AlertDialogueUtils.showScanDevView(this,mBluetoothAdapter,initBlueToothGattCallBack());
+        closeGatt();
+        AlertDialogueUtils.showScanDevView(this,mBluetoothAdapter,mBluetoothGattCallback);
     }
 
 
@@ -110,7 +115,7 @@ public abstract class BlueToothActivity extends BaseActivity {
                     }else {
                         AlertDialogueUtils.showHint(
                                 this,
-                                "您已经禁用了本程序所需的系统权限，请到应用管理中设置相关系统权限。",
+                                "您已经禁用了本程序所需的系统权限，请先到应用管理中给此程序分配系统权限。",
                                 new Runnable() {
                                     @Override
                                     public void run() {
@@ -147,5 +152,26 @@ public abstract class BlueToothActivity extends BaseActivity {
                     }
                 });
 
+    }
+
+    public BluetoothGatt getBluetoothGatt() {
+        return mBluetoothGatt;
+    }
+
+    public void setBluetoothGatt(BluetoothGatt bluetoothGatt) {
+        mBluetoothGatt = bluetoothGatt;
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        closeGatt();
+    }
+
+    public void closeGatt(){
+        if(mBluetoothGatt!=null){
+            mBluetoothGatt.close();
+            mBluetoothGatt=null;
+        }
     }
 }

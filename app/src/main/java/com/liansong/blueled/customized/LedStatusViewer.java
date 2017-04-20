@@ -3,7 +3,6 @@ package com.liansong.blueled.customized;
 import android.content.Context;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
-import android.view.View;
 import android.widget.LinearLayout;
 
 import com.liansong.blueled.R;
@@ -20,6 +19,10 @@ public class LedStatusViewer extends LinearLayout {
     private Context mContext;
     private int mLayoutMargin;
     private int mPadding;
+    private LedView mLed1;
+    private LedView mLed2;
+    private boolean isConnected;
+
 
     public LedStatusViewer(Context context) {
         this(context,null);
@@ -57,12 +60,34 @@ public class LedStatusViewer extends LinearLayout {
                 layoutParams.leftMargin= ledViewLeftMargin;
                 ledView.setLayoutParams(layoutParams);
             }
-            ledView.setOnClickListener(new OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    ledView.toggleColor(!ledView.isLit());
-                }
-            });
+        }
+        mLed1 = (LedView) getChildAt(0);
+        mLed2 = (LedView) getChildAt(1);
+    }
+
+    public boolean isConnected() {
+        return isConnected;
+    }
+
+    public void setConnected(boolean isConnected) {
+        this.isConnected = isConnected;
+
+    }
+
+    public LedView getLed1() {
+        return mLed1;
+    }
+
+    public LedView getLed2() {
+        return mLed2;
+    }
+
+    public void toggleLeds(boolean isToLitLed1, boolean isToLitLed2){
+        if(isToLitLed1!=mLed1.isLit()){
+            mLed1.toggleColor(isToLitLed1);
+        }
+        if(isToLitLed2!=mLed2.isLit()){
+            mLed2.toggleColor(isToLitLed2);
         }
     }
 

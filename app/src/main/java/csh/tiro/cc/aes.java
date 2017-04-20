@@ -5,6 +5,7 @@ package csh.tiro.cc;
  */
 
 public class aes {
+    private aes(){}
     static{
         System.loadLibrary("AES");
     }

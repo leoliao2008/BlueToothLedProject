@@ -1,14 +1,19 @@
 package com.liansong.blueled.adapters;
 
-import android.app.Activity;
+import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
 
 import com.liansong.blueled.R;
+import com.liansong.blueled.bases.BaseApplication;
+import com.liansong.blueled.bases.BlueToothActivity;
 import com.liansong.blueled.beans.BlueToothBean;
+import com.liansong.blueled.utils.ToastUtil;
 import com.liansong.blueled.viewHolders.ScanResultViewHolder;
 
 import java.util.LinkedHashSet;
@@ -20,10 +25,10 @@ import java.util.LinkedHashSet;
 public class ScanResultAdapter extends RecyclerView.Adapter<ScanResultViewHolder> {
 
     private LinkedHashSet<BlueToothBean> list;
-    private Activity mContext;
+    private BlueToothActivity mContext;
     private BluetoothGattCallback mBluetoothGattCallback;
 
-    public ScanResultAdapter(LinkedHashSet<BlueToothBean> list, BluetoothGattCallback bluetoothGattCallback,Activity context) {
+    public ScanResultAdapter(LinkedHashSet<BlueToothBean> list, BluetoothGattCallback bluetoothGattCallback,BlueToothActivity context) {
         this.list = list;
         mContext = context;
         mBluetoothGattCallback=bluetoothGattCallback;
@@ -36,7 +41,7 @@ public class ScanResultAdapter extends RecyclerView.Adapter<ScanResultViewHolder
     }
 
     @Override
-    public void onBindViewHolder(ScanResultViewHolder holder, int position) {
+    public void onBindViewHolder(final ScanResultViewHolder holder, int position) {
         final BlueToothBean bean = (BlueToothBean) list.toArray()[position];
         holder.getTv_devName().setText("Device Name:  "+bean.getDevice().getName());
         holder.getTv_devAddress().setText("Device Address:  "+bean.getDevice().getAddress());
@@ -64,7 +69,31 @@ public class ScanResultAdapter extends RecyclerView.Adapter<ScanResultViewHolder
         holder.getBtn_connect().setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                bean.getDevice().connectGatt(mContext,true,mBluetoothGattCallback);
+                mContext.closeGatt();
+                BluetoothGatt bluetoothGatt = bean.getDevice().connectGatt(mContext, true, mBluetoothGattCallback);
+                holder.getTv_devStatus().setText("Status: Connecting...");
+                final AlphaAnimation alphaAnimation=new AlphaAnimation(0.3f,1.f);
+                alphaAnimation.setDuration(800);
+                alphaAnimation.setRepeatMode(Animation.REVERSE);
+                alphaAnimation.setRepeatCount(Animation.INFINITE);
+                holder.getTv_devStatus().startAnimation(alphaAnimation);
+                BaseApplication.postDelay(new Runnable() {
+                    @Override
+                    public void run() {
+                        try{
+                            alphaAnimation.cancel();
+                            holder.getTv_devStatus().setAnimation(null);
+                            holder.getTv_devStatus().setText("Connect failed, please retry again.");
+                        }catch (Exception e){
+
+                        }
+                    }
+                },10000);
+                if(bluetoothGatt!=null){
+                    mContext.setBluetoothGatt(bluetoothGatt);
+                }else {
+                    ToastUtil.showToast("BluetoothGatt Open fails.");
+                }
             }
         });
     }
