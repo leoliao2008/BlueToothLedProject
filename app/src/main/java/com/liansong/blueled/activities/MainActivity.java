@@ -151,8 +151,8 @@ public class MainActivity extends BlueToothActivity {
     }
 
     private void litLed(int ledIndex, boolean isToLit) {
-        int index = mDataSend.length - 1;
-        while (index != 11) {
+        int index = 15;
+        while (index != 10) {
             mDataSend[index] = getRandomDigit();
             index--;
         }
@@ -169,8 +169,10 @@ public class MainActivity extends BlueToothActivity {
         }
         byte[] out=new byte[16];
         aes.cipher(mDataSend,out);
-       if(mGattCharacteristic_Write.setValue(out)){
+       if(mGattCharacteristic_Write!=null&&mGattCharacteristic_Write.setValue(out)){
+           showLog("getBluetoothGatt().writeCharacteristic-----success");
            if(getBluetoothGatt().writeCharacteristic(mGattCharacteristic_Write)){
+               showLog("getBluetoothGatt().writeCharacteristic-----success");
                switch (ledIndex) {
                    case 0:
                        mLed1.toggleColor(isToLit);
@@ -196,7 +198,6 @@ public class MainActivity extends BlueToothActivity {
         return new BluetoothGattCallback() {
             @Override
             public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-                mLedStatusViewer.setConnected(false);//return to default.
                 if(newState== BluetoothProfile.STATE_CONNECTED){
                     AlertDialogueUtils.dismissDialog();
                     showLog("Gatt connected.");
@@ -208,13 +209,13 @@ public class MainActivity extends BlueToothActivity {
                     }
                 }else {
                     showLog("Gatt disconnected.");
-                    //disconnect
-
+                    closeGatt();
                 }
             }
 
             @Override
             public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+                boolean isSuccess=false;
                 if(status==BluetoothGatt.GATT_SUCCESS){
                     showLog("Service discovered:");
                     List<BluetoothGattService> services = gatt.getServices();
@@ -226,52 +227,59 @@ public class MainActivity extends BlueToothActivity {
                         showLog("target service not found");
                     }else {
                         showLog("target service found");
-                        mGattCharacteristic_Write = mGattService.getCharacteristic(UUID.fromString(WRITE_CHAR_UUID));
-                        if(mGattCharacteristic_Write ==null){
-                            showLog("write char not found");
-                        }else {
-                            showLog("write char found");
-                            List<BluetoothGattCharacteristic> characteristics = mGattService.getCharacteristics();
-                            notfyCharList.clear();
-                            for(BluetoothGattCharacteristic characteristic:characteristics){
-                                showLog(characteristic.toString());
-                                if(characteristic.getProperties()==BluetoothGattCharacteristic.PROPERTY_NOTIFY){
-                                    showLog("notification char found");
-                                    notfyCharList.add(characteristic);
-                                }
+                        List<BluetoothGattCharacteristic> characteristics = mGattService.getCharacteristics();
+                        notfyCharList.clear();
+                        showLog("iterating characteristics:");
+                        for(BluetoothGattCharacteristic characteristic:characteristics){
+                            if(characteristic.getProperties()==BluetoothGattCharacteristic.PROPERTY_NOTIFY){
+                                showLog("notification characteristic found:");
+                                notfyCharList.add(characteristic);
                             }
-                            if(notfyCharList.size()>0){
-                                BluetoothGattCharacteristic notifyChar = notfyCharList.get(0);
-                                if(gatt.setCharacteristicNotification(notifyChar, true)){
-                                    showLog("Set notify characteristic success.");
-                                    BluetoothGattDescriptor descriptor = notifyChar.getDescriptor(UUID.fromString(DESCRIPTOR_UUID));
-                                    if(descriptor!=null){
-                                        showLog("Target descriptor acquired.");
-                                        if(descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)){
-                                            showLog("Target descriptor value set successfully.");
-                                            if(gatt.writeDescriptor(descriptor)){
-                                                showToast("All set. Sensor Led is connected successfully!");
-                                                mLedStatusViewer.setConnected(true);
+                            showLog(characteristic.toString());
+                        }
+                        if(notfyCharList.size()>0){
+                            showLog("Acquire notification characteristics success.");
+                            BluetoothGattCharacteristic notifyChar = notfyCharList.get(0);
+                            if(gatt.setCharacteristicNotification(notifyChar, true)){
+                                showLog("Set notify characteristic success.");
+                                BluetoothGattDescriptor descriptor = notifyChar.getDescriptor(UUID.fromString(DESCRIPTOR_UUID));
+                                if(descriptor!=null){
+                                    showLog("Target descriptor acquired.");
+                                    if(descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)){
+                                        showLog("Target descriptor value init successfully.");
+                                        if(gatt.writeDescriptor(descriptor)){
+                                            showLog("Write target descriptor successfully.");
+                                            mGattCharacteristic_Write = mGattService.getCharacteristic(UUID.fromString(WRITE_CHAR_UUID));
+                                            if(mGattCharacteristic_Write !=null){
+                                                showToast("All set. Sensor Led is connected successfully! Good to go.");
+                                                isSuccess=true;
+                                                showLog("writing characteristic found");
                                             }else {
-                                                showLog("Fail to write descriptor");
+                                                showLog("writing characteristic not found");
                                             }
                                         }else {
-                                            showLog("Fail to set descriptor value");
+                                            showLog("Fail to write target descriptor");
                                         }
-
                                     }else {
-                                        showLog("Fail to find descriptor");
+                                        showLog("Fail to set descriptor value");
                                     }
 
                                 }else {
-                                    showLog("Fail to set notify characteristic");
-                               }
-                            }else {
-                                showLog("Fail to acquire any notify characteristic");
-                            }
+                                    showLog("Target descriptor fail to acquire.");
+                                }
 
+                            }else {
+                                showLog("Fail to set notify characteristic");
+                            }
+                        }else {
+                            showLog("Fail to acquire any notify characteristic");
                         }
                     }
+                }
+                mLedStatusViewer.setConnected(isSuccess);
+                if(!isSuccess){
+                    showLog("Fail to connect sensor led. Close gatt.");
+                    closeGatt();
                 }
             }
 
@@ -285,13 +293,16 @@ public class MainActivity extends BlueToothActivity {
                 }else {
                     int len=data.length;
                     showLog("data length="+len);
+                    StringBuffer sb=new StringBuffer();
                     for(byte b:data){
                         String hexString = Integer.toHexString(b);
+                        sb.append("0x");
                         if(hexString.length()<2){
-                            hexString="0"+hexString;
+                            sb.append('0');
                         }
-                        showLog("0x"+ hexString);
+                        sb.append(hexString).append(" ");
                     }
+                    showLog(sb.toString().trim());
                     if(len==16){
                         aes.invCipher(data, mDataReceived);
                         updateLedViews();
@@ -299,6 +310,8 @@ public class MainActivity extends BlueToothActivity {
                 }
 
             }
+
+
         };
     }
 
@@ -318,7 +331,7 @@ public class MainActivity extends BlueToothActivity {
                        case 1:
                            isToLitLed1=true;
                            if(!mLed1.isLit()&&!mLed2.isLit()){
-                               //如果led 1 和 led 2 都还没亮，此时收到了打开led 1的命令，则符合开始计时条件。
+                               showLog("led 1 和 led 2 都还没亮，此时收到了打开led 1的命令，符合开始计时条件，开始计时");
                                startTiming();
                            }
                            break;
@@ -332,7 +345,7 @@ public class MainActivity extends BlueToothActivity {
                        case 1:
                            isToLitLed2=true;
                            if(mLed1.isLit()&&!mLed2.isLit()){
-                               //如果led 1已经亮了，但led 2还没亮，此时收到了打开led 2的命令，则符合停止计时的条件。
+                               showLog("led 1已经亮了，但led 2还没亮，此时收到了打开led 2的命令，停止计时。");
                                stopTiming();
                            }
                            break;
@@ -356,7 +369,7 @@ public class MainActivity extends BlueToothActivity {
                 @Override
                 protected void onPreExecute() {
                     isTiming=true;
-                    tv_timing.setText("00:00.000");
+                    tv_timing.setText("00:00.00");
                 }
 
                 @Override

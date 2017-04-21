@@ -72,7 +72,7 @@ public class LedView extends View {
         }else {
             animator=ValueAnimator.ofInt(fromColor,toColor);
         }
-        animator.setDuration(500);
+        animator.setDuration(100);
         animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {

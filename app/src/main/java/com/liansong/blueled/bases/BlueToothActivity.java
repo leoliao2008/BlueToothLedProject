@@ -59,13 +59,17 @@ public abstract class BlueToothActivity extends BaseActivity {
 
     protected void scanLeDevices(){
         if(initBlueTooth()){
-            startScanLeDevices();
+            showScanView();
         }
     }
 
-    private void startScanLeDevices() {
+    private void showScanView() {
         closeGatt();
-        AlertDialogueUtils.showScanDevView(this,mBluetoothAdapter,mBluetoothGattCallback);
+        if(mBluetoothAdapter!=null&&mBluetoothAdapter.isEnabled()&&mBluetoothGattCallback!=null){
+            AlertDialogueUtils.showScanDevView(this,mBluetoothAdapter,mBluetoothGattCallback);
+        }else {
+            showToast("请确保蓝牙已经开启并重试。");
+        }
     }
 
 
@@ -93,7 +97,7 @@ public abstract class BlueToothActivity extends BaseActivity {
         if(requestCode==REQUEST_ENABLE_BT){
             if(resultCode==RESULT_OK){
                 isBlueToothReady=true;
-                startScanLeDevices();
+                showScanView();
             }else {
                 isBlueToothReady=false;
             }
@@ -170,6 +174,8 @@ public abstract class BlueToothActivity extends BaseActivity {
 
     public void closeGatt(){
         if(mBluetoothGatt!=null){
+            mBluetoothGatt.abortReliableWrite();
+            mBluetoothGatt.disconnect();
             mBluetoothGatt.close();
             mBluetoothGatt=null;
         }

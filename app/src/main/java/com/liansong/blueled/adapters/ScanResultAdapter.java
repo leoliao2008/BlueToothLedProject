@@ -8,12 +8,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
+import android.widget.Toast;
 
 import com.liansong.blueled.R;
 import com.liansong.blueled.bases.BaseApplication;
 import com.liansong.blueled.bases.BlueToothActivity;
 import com.liansong.blueled.beans.BlueToothBean;
-import com.liansong.blueled.utils.ToastUtil;
+import com.liansong.blueled.utils.LogUtil;
 import com.liansong.blueled.viewHolders.ScanResultViewHolder;
 
 import java.util.LinkedHashSet;
@@ -71,28 +72,28 @@ public class ScanResultAdapter extends RecyclerView.Adapter<ScanResultViewHolder
             public void onClick(View v) {
                 mContext.closeGatt();
                 BluetoothGatt bluetoothGatt = bean.getDevice().connectGatt(mContext, true, mBluetoothGattCallback);
-                holder.getTv_devStatus().setText("Status: Connecting...");
-                final AlphaAnimation alphaAnimation=new AlphaAnimation(0.3f,1.f);
-                alphaAnimation.setDuration(800);
-                alphaAnimation.setRepeatMode(Animation.REVERSE);
-                alphaAnimation.setRepeatCount(Animation.INFINITE);
-                holder.getTv_devStatus().startAnimation(alphaAnimation);
-                BaseApplication.postDelay(new Runnable() {
-                    @Override
-                    public void run() {
-                        try{
-                            alphaAnimation.cancel();
-                            holder.getTv_devStatus().setAnimation(null);
-                            holder.getTv_devStatus().setText("Connect failed, please retry again.");
-                        }catch (Exception e){
-
-                        }
-                    }
-                },10000);
                 if(bluetoothGatt!=null){
                     mContext.setBluetoothGatt(bluetoothGatt);
+                    holder.getTv_devStatus().setText("Device Status: Connecting...");
+                    final AlphaAnimation alphaAnimation=new AlphaAnimation(0.3f,1.f);
+                    alphaAnimation.setDuration(800);
+                    alphaAnimation.setRepeatMode(Animation.REVERSE);
+                    alphaAnimation.setRepeatCount(Animation.INFINITE);
+                    holder.getTv_devStatus().startAnimation(alphaAnimation);
+                    BaseApplication.postDelay(new Runnable() {
+                        @Override
+                        public void run() {
+                            try{
+                                alphaAnimation.cancel();
+                                holder.getTv_devStatus().setAnimation(null);
+                                holder.getTv_devStatus().setText("Device Status: Connect failed, please retry again.");
+                            }catch (Exception e){
+                                showLog(e.toString());
+                            }
+                        }
+                    },10000);
                 }else {
-                    ToastUtil.showToast("BluetoothGatt Open fails.");
+                    Toast.makeText(mContext,"BluetoothGatt Open fails.",Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -101,6 +102,10 @@ public class ScanResultAdapter extends RecyclerView.Adapter<ScanResultViewHolder
     @Override
     public int getItemCount() {
         return list.size();
+    }
+
+    private void showLog(String msg){
+        LogUtil.showLog(ScanResultAdapter.class.getName(),msg);
     }
 
 
