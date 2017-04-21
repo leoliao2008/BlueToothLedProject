@@ -251,9 +251,9 @@ public class MainActivity extends BlueToothActivity {
                                             showLog("Write target descriptor successfully.");
                                             mGattCharacteristic_Write = mGattService.getCharacteristic(UUID.fromString(WRITE_CHAR_UUID));
                                             if(mGattCharacteristic_Write !=null){
+                                                showLog("writing characteristic found");
                                                 showToast("All set. Sensor Led is connected successfully! Good to go.");
                                                 isSuccess=true;
-                                                showLog("writing characteristic found");
                                             }else {
                                                 showLog("writing characteristic not found");
                                             }
@@ -316,22 +316,26 @@ public class MainActivity extends BlueToothActivity {
     }
 
     private void updateLedViews() {
+        showLog("data len=16,decipher data...");
        runOnUiThread(new Runnable() {
            @Override
            public void run() {
                if(mDataReceived[0] == 'T' && mDataReceived[1] == 'R' && mDataReceived[2] == '1' && mDataReceived[3] == '7' &&
                        mDataReceived[4] == '0' && mDataReceived[5] == '3' && mDataReceived[6] == 'R' && mDataReceived[7] == '0' &&
                        mDataReceived[8] == '2'){
+                   showLog("data format fits protocol.");
                    boolean isToLitLed1=false;
                    boolean isToLitLed2=false;
                    switch (mDataReceived[9]){
                        case 0:
                            isToLitLed1=false;
+                           showLog("Led 1 is about to off.");
                            break;
                        case 1:
                            isToLitLed1=true;
+                           showLog("Led 1 is about to lit.");
                            if(!mLed1.isLit()&&!mLed2.isLit()){
-                               showLog("led 1 和 led 2 都还没亮，此时收到了打开led 1的命令，符合开始计时条件，开始计时");
+                               showLog("目前led 1 和 led 2 都还没亮，此时收到了打开led 1的命令，符合开始计时条件，开始计时");
                                startTiming();
                            }
                            break;
@@ -341,11 +345,13 @@ public class MainActivity extends BlueToothActivity {
                    switch (mDataReceived[10]){
                        case 0:
                            isToLitLed2=false;
+                           showLog("Led 2 is about to off.");
                            break;
                        case 1:
                            isToLitLed2=true;
+                           showLog("Led 2 is about to lit.");
                            if(mLed1.isLit()&&!mLed2.isLit()){
-                               showLog("led 1已经亮了，但led 2还没亮，此时收到了打开led 2的命令，停止计时。");
+                               showLog("目前led 1已经亮了，但led 2还没亮，此时收到了打开led 2的命令，停止计时。");
                                stopTiming();
                            }
                            break;
@@ -353,6 +359,8 @@ public class MainActivity extends BlueToothActivity {
                            break;
                    }
                    mLedStatusViewer.toggleLeds(isToLitLed1,isToLitLed2);
+               }else {
+                   showLog("data format do not fit protocol.");
                }
            }
        });
