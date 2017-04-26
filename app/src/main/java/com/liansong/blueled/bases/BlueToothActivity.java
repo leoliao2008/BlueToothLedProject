@@ -105,6 +105,7 @@ public abstract class BlueToothActivity extends BaseActivity {
         super.onActivityResult(requestCode, resultCode, data);
     }
 
+    @NonNull
     protected abstract BluetoothGattCallback initBlueToothGattCallBack();
 
     @RequiresApi(api = Build.VERSION_CODES.M)

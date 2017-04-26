@@ -111,7 +111,7 @@ public class AlertDialogueUtils {
             }
         });
 
-        //prepare dialog view
+        //attach view to dialog
         AlertDialog.Builder builder=new AlertDialog.Builder(context);
         alertDialog=builder.setCancelable(false).create();
         alertDialog.show();
@@ -140,7 +140,10 @@ public class AlertDialogueUtils {
         tv_scanning.setVisibility(View.INVISIBLE);
     }
 
-    private static void startScanDevice(Context context, final TextView tv_scanning, final BluetoothAdapter bluetoothAdapter, final BluetoothAdapter.LeScanCallback leScanCallback) {
+    private static void startScanDevice(Context context,
+                                        final TextView tv_scanning,
+                                        final BluetoothAdapter bluetoothAdapter,
+                                        final BluetoothAdapter.LeScanCallback leScanCallback) {
         if(!isScanning){
             isScanning =true;
             startAnimation(context,tv_scanning);
@@ -156,7 +159,9 @@ public class AlertDialogueUtils {
         }
     }
 
-    private static void stopScanDevice(TextView tv_scanning, BluetoothAdapter bluetoothAdapter, BluetoothAdapter.LeScanCallback leScanCallback) {
+    private static void stopScanDevice(TextView tv_scanning,
+                                       BluetoothAdapter bluetoothAdapter,
+                                       BluetoothAdapter.LeScanCallback leScanCallback) {
         bluetoothAdapter.stopLeScan(leScanCallback);
         stopAnimation(tv_scanning);
         isScanning=false;

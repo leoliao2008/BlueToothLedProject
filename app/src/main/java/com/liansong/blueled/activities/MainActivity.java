@@ -47,15 +47,18 @@ public class MainActivity extends BlueToothActivity {
     private static final String SERVICE_UUID="0000fee9-0000-1000-8000-00805f9b34fb";
     private static final String WRITE_CHAR_UUID="d44bc439-abfd-45a2-b575-925416129600";
     private static final String DESCRIPTOR_UUID ="00002902-0000-1000-8000-00805f9b34fb";
+    private static final int DATA_LEN=11;
     private BluetoothGattService mGattService;
     private BluetoothGattCharacteristic mGattCharacteristic_Write;
     private BluetoothGattCharacteristic mGattCharacteristic_Notify;
     private ArrayList<BluetoothGattCharacteristic> notfyCharList=new ArrayList<>();
     private boolean isLedConnected;
-    private byte[] mDataSend = {'T','R','1','7','0','3','R','0','2',0,0,0,0,0,0,0}; //用来存放发送到蓝牙设备的信息
-    private byte[] mDataReceived = new byte[16];//用来存放蓝牙设备发送回来的信息
+//    private byte[] mDataSend = {'T','R','1','7','0','3','R','0','2',0,0,0,0,0,0,0}; //用来存放发送到蓝牙设备的信息
+    private byte[] mDataSend = {'T','R','1','7','0','3','R','0','2',0,0}; //用来存放发送到蓝牙设备的信息
+    private byte[] mDataReceived = new byte[DATA_LEN];//用来存放蓝牙设备发送回来的信息
     private boolean isTiming;
     private Random mRandom=new Random();
+
 
     public static void startActivity(Activity context){
         context.startActivity(new Intent(context,MainActivity.class));
@@ -151,11 +154,11 @@ public class MainActivity extends BlueToothActivity {
     }
 
     private void litLed(int ledIndex, boolean isToLit) {
-        int index = 15;
-        while (index != 10) {
-            mDataSend[index] = getRandomDigit();
-            index--;
-        }
+//        int index = 15;
+//        while (index != 10) {
+//            mDataSend[index] = getRandomDigit();
+//            index--;
+//        }
         int value=isToLit?1:0;
         switch (ledIndex) {
             case 0:
@@ -167,7 +170,7 @@ public class MainActivity extends BlueToothActivity {
             default:
                 break;
         }
-        byte[] out=new byte[16];
+        byte[] out=new byte[DATA_LEN];
         aes.cipher(mDataSend,out);
        if(mGattCharacteristic_Write!=null&&mGattCharacteristic_Write.setValue(out)){
            showLog("getBluetoothGatt().writeCharacteristic-----success");
@@ -193,6 +196,7 @@ public class MainActivity extends BlueToothActivity {
     }
 
 
+    @NonNull
     @Override
     protected BluetoothGattCallback initBlueToothGattCallBack() {
         return new BluetoothGattCallback() {
@@ -303,7 +307,9 @@ public class MainActivity extends BlueToothActivity {
                         sb.append(hexString).append(" ");
                     }
                     showLog(sb.toString().trim());
-                    if(len==16){
+//                0x54,0x52,0x31,0x37,0x30,0x33,0x52,0x30,0x32,0,0
+                    if(len==DATA_LEN){
+                        showLog("data len="+DATA_LEN+",invCipher data...");
                         aes.invCipher(data, mDataReceived);
                         updateLedViews();
                     }
@@ -316,54 +322,65 @@ public class MainActivity extends BlueToothActivity {
     }
 
     private void updateLedViews() {
-        showLog("data len=16,decipher data...");
-       runOnUiThread(new Runnable() {
-           @Override
-           public void run() {
-               if(mDataReceived[0] == 'T' && mDataReceived[1] == 'R' && mDataReceived[2] == '1' && mDataReceived[3] == '7' &&
-                       mDataReceived[4] == '0' && mDataReceived[5] == '3' && mDataReceived[6] == 'R' && mDataReceived[7] == '0' &&
-                       mDataReceived[8] == '2'){
-                   showLog("data format fits protocol.");
-                   boolean isToLitLed1=false;
-                   boolean isToLitLed2=false;
-                   switch (mDataReceived[9]){
-                       case 0:
-                           isToLitLed1=false;
-                           showLog("Led 1 is about to off.");
-                           break;
-                       case 1:
-                           isToLitLed1=true;
-                           showLog("Led 1 is about to lit.");
-                           if(!mLed1.isLit()&&!mLed2.isLit()){
-                               showLog("目前led 1 和 led 2 都还没亮，此时收到了打开led 1的命令，符合开始计时条件，开始计时");
-                               startTiming();
-                           }
-                           break;
-                       default:
-                           break;
-                   }
-                   switch (mDataReceived[10]){
-                       case 0:
-                           isToLitLed2=false;
-                           showLog("Led 2 is about to off.");
-                           break;
-                       case 1:
-                           isToLitLed2=true;
-                           showLog("Led 2 is about to lit.");
-                           if(mLed1.isLit()&&!mLed2.isLit()){
-                               showLog("目前led 1已经亮了，但led 2还没亮，此时收到了打开led 2的命令，停止计时。");
-                               stopTiming();
-                           }
-                           break;
-                       default:
-                           break;
-                   }
-                   mLedStatusViewer.toggleLeds(isToLitLed1,isToLitLed2);
-               }else {
-                   showLog("data format do not fit protocol.");
-               }
-           }
-       });
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                showLog("result:");
+                StringBuffer sb=new StringBuffer();
+                for(byte b:mDataReceived){
+                    String hexString = Integer.toHexString(b);
+                    sb.append("0x");
+                    if(hexString.length()<2){
+                        sb.append('0');
+                    }
+                    sb.append(hexString).append(" ");
+                }
+                showLog(sb.toString().trim());
+                if(mDataReceived[0] == 'T' && mDataReceived[1] == 'R' && mDataReceived[2] == '1' && mDataReceived[3] == '7' &&
+                        mDataReceived[4] == '0' && mDataReceived[5] == '3' && mDataReceived[6] == 'R' && mDataReceived[7] == '0' &&
+                        mDataReceived[8] == '2'){
+                    showLog("data format fits protocol.");
+                    boolean isToLitLed1=false;
+                    boolean isToLitLed2=false;
+                    switch (mDataReceived[9]){
+                        case 0:
+                            isToLitLed1=false;
+                            showLog("Led 1 is about to off.");
+                            break;
+                        case 1:
+                            isToLitLed1=true;
+                            showLog("Led 1 is about to lit.");
+                            if(!mLed1.isLit()&&!mLed2.isLit()){
+                                showLog("目前led 1 和 led 2 都还没亮，此时收到了打开led 1的命令，符合开始计时条件，开始计时");
+                                startTiming();
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                    switch (mDataReceived[10]){
+                        case 0:
+                            isToLitLed2=false;
+                            showLog("Led 2 is about to off.");
+                            break;
+                        case 1:
+                            isToLitLed2=true;
+                            showLog("Led 2 is about to lit.");
+                            if(mLed1.isLit()&&!mLed2.isLit()){
+                                showLog("目前led 1已经亮了，但led 2还没亮，此时收到了打开led 2的命令，停止计时。");
+                                stopTiming();
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                    mLedStatusViewer.toggleLeds(isToLitLed1,isToLitLed2);
+                }else {
+                    showLog("data format do not fit protocol.");
+                }
+            }
+        });
+
     }
 
     private void stopTiming() {
