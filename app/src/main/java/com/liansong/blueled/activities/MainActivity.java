@@ -47,14 +47,13 @@ public class MainActivity extends BlueToothActivity {
     private static final String SERVICE_UUID="0000fee9-0000-1000-8000-00805f9b34fb";
     private static final String WRITE_CHAR_UUID="d44bc439-abfd-45a2-b575-925416129600";
     private static final String DESCRIPTOR_UUID ="00002902-0000-1000-8000-00805f9b34fb";
-    private static final int DATA_LEN=11;
+    private static final int DATA_LEN=16;
     private BluetoothGattService mGattService;
     private BluetoothGattCharacteristic mGattCharacteristic_Write;
     private BluetoothGattCharacteristic mGattCharacteristic_Notify;
     private ArrayList<BluetoothGattCharacteristic> notfyCharList=new ArrayList<>();
     private boolean isLedConnected;
-//    private byte[] mDataSend = {'T','R','1','7','0','3','R','0','2',0,0,0,0,0,0,0}; //用来存放发送到蓝牙设备的信息
-    private byte[] mDataSend = {'T','R','1','7','0','3','R','0','2',0,0}; //用来存放发送到蓝牙设备的信息
+    private byte[] mDataSend = {'T','R','1','7','0','3','R','0','2',0,0,0,0,0,0,0}; //用来存放发送到蓝牙设备的信息
     private byte[] mDataReceived = new byte[DATA_LEN];//用来存放蓝牙设备发送回来的信息
     private boolean isTiming;
     private Random mRandom=new Random();
@@ -154,18 +153,18 @@ public class MainActivity extends BlueToothActivity {
     }
 
     private void litLed(int ledIndex, boolean isToLit) {
-//        int index = 15;
-//        while (index != 10) {
-//            mDataSend[index] = getRandomDigit();
-//            index--;
-//        }
+        int index = 15;
+        while (index != 10) {
+            mDataSend[index] = getRandomDigit();
+            index--;
+        }
         int value=isToLit?1:0;
         switch (ledIndex) {
             case 0:
-                mDataSend[9]= (byte) value;
+                mDataSend[9]= (byte) (value&0xff);
                 break;
             case 1:
-                mDataSend[10]= (byte) value;
+                mDataSend[10]= (byte) (value&0xff);
                 break;
             default:
                 break;
@@ -173,7 +172,7 @@ public class MainActivity extends BlueToothActivity {
         byte[] out=new byte[DATA_LEN];
         aes.cipher(mDataSend,out);
        if(mGattCharacteristic_Write!=null&&mGattCharacteristic_Write.setValue(out)){
-           showLog("getBluetoothGatt().writeCharacteristic-----success");
+           showLog("mGattCharacteristic_Write.setValue(out)-----success");
            if(getBluetoothGatt().writeCharacteristic(mGattCharacteristic_Write)){
                showLog("getBluetoothGatt().writeCharacteristic-----success");
                switch (ledIndex) {
@@ -299,7 +298,7 @@ public class MainActivity extends BlueToothActivity {
                     showLog("data length="+len);
                     StringBuffer sb=new StringBuffer();
                     for(byte b:data){
-                        String hexString = Integer.toHexString(b);
+                        String hexString = Integer.toHexString(b&0xff);
                         sb.append("0x");
                         if(hexString.length()<2){
                             sb.append('0');
@@ -307,7 +306,6 @@ public class MainActivity extends BlueToothActivity {
                         sb.append(hexString).append(" ");
                     }
                     showLog(sb.toString().trim());
-//                0x54,0x52,0x31,0x37,0x30,0x33,0x52,0x30,0x32,0,0
                     if(len==DATA_LEN){
                         showLog("data len="+DATA_LEN+",invCipher data...");
                         aes.invCipher(data, mDataReceived);
@@ -328,7 +326,7 @@ public class MainActivity extends BlueToothActivity {
                 showLog("result:");
                 StringBuffer sb=new StringBuffer();
                 for(byte b:mDataReceived){
-                    String hexString = Integer.toHexString(b);
+                    String hexString = Integer.toHexString(b&0xff);
                     sb.append("0x");
                     if(hexString.length()<2){
                         sb.append('0');
@@ -417,7 +415,7 @@ public class MainActivity extends BlueToothActivity {
                 protected void onPostExecute(Void aVoid) {
                     updateConsole("计时结束，间隔时间："+tv_timing.getText().toString());
                 }
-            }.executeOnExecutor(AsyncTask.SERIAL_EXECUTOR);
+            }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
         }
     }
 

@@ -11,7 +11,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.annotation.RequiresApi;
 import android.widget.Toast;
 
 import com.liansong.blueled.utils.AlertDialogueUtils;
@@ -43,7 +42,7 @@ public abstract class BlueToothActivity extends BaseActivity {
     }
 
     private void requestPermissions(){
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             boolean isGranted=true;
             for(String pm:PERMISSIONS){
                 if(checkSelfPermission(pm)==PackageManager.PERMISSION_DENIED){
@@ -108,7 +107,6 @@ public abstract class BlueToothActivity extends BaseActivity {
     @NonNull
     protected abstract BluetoothGattCallback initBlueToothGattCallBack();
 
-    @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if(requestCode== REQUEST_PERMISSIONS){

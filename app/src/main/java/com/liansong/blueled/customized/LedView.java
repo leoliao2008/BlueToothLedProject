@@ -23,10 +23,10 @@ public class LedView extends View {
     private int mRadius;
     private Paint mPaint;
     private TextPaint mTextPaint;
-    private int mColor;
     private String mText;
     private float[] textWidths=new float[1];
     private boolean isLit;
+    private boolean isAnimating;
 
     public LedView(Context context,int diameter,String text) {
         this(context,diameter,text,null);
@@ -42,8 +42,7 @@ public class LedView extends View {
         mText=String.copyValueOf(text.toCharArray(),0,1);
         mRadius =diameter/2;
         mPaint=new Paint(Paint.ANTI_ALIAS_FLAG);
-        mColor=Color.WHITE;
-        mPaint.setColor(mColor);
+        mPaint.setColor(Color.WHITE);
         mTextPaint=new TextPaint();
         mTextPaint.setTextSize(getResources().getDimensionPixelSize(R.dimen.text_size_type_1));
         mTextPaint.setFlags(TextPaint.ANTI_ALIAS_FLAG);
@@ -66,13 +65,16 @@ public class LedView extends View {
 
 
     private void animateColorFading(final int fromColor, int toColor){
+        if(isAnimating){
+            return;
+        }
         ValueAnimator animator;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             animator=ValueAnimator.ofArgb(fromColor,toColor);
         }else {
             animator=ValueAnimator.ofInt(fromColor,toColor);
         }
-        animator.setDuration(100);
+        animator.setDuration(10);
         animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
@@ -84,16 +86,19 @@ public class LedView extends View {
         animator.addListener(new Animator.AnimatorListener() {
             @Override
             public void onAnimationStart(Animator animation) {
+                isAnimating=true;
 
             }
 
             @Override
             public void onAnimationEnd(Animator animation) {
+                isAnimating=false;
                 isLit=!isLit;
             }
 
             @Override
             public void onAnimationCancel(Animator animation) {
+                isAnimating=false;
 
             }
 

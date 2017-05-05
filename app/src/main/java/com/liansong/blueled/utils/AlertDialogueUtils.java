@@ -33,7 +33,7 @@ public class AlertDialogueUtils {
     private static AlertDialog alertDialog;
     private static LinkedHashSet<BlueToothBean> blueToothDeviceList =new LinkedHashSet<>();
     private static ScanResultAdapter scanResultAdapter;
-    private static AlphaAnimation loadAnimation;
+    private static AlphaAnimation loadingAnimation;
     private static boolean isScanning;
     private static BluetoothAdapter.LeScanCallback leScanCallback;
 
@@ -124,17 +124,17 @@ public class AlertDialogueUtils {
 
     private static void startAnimation(Context context,TextView tv_scanning) {
         tv_scanning.setVisibility(View.VISIBLE);
-        loadAnimation=new AlphaAnimation(0.3f,1.f);
-        loadAnimation.setRepeatCount(Animation.INFINITE);
-        loadAnimation.setRepeatMode(Animation.REVERSE);
-        loadAnimation.setDuration(800);
-        loadAnimation.setInterpolator(context,android.R.interpolator.linear);
-        tv_scanning.startAnimation(loadAnimation);
+        loadingAnimation =new AlphaAnimation(0.3f,1.f);
+        loadingAnimation.setRepeatCount(Animation.INFINITE);
+        loadingAnimation.setRepeatMode(Animation.REVERSE);
+        loadingAnimation.setDuration(800);
+        loadingAnimation.setInterpolator(context,android.R.interpolator.linear);
+        tv_scanning.startAnimation(loadingAnimation);
     }
 
     private static void stopAnimation(final TextView tv_scanning) {
-        if(loadAnimation!=null){
-            loadAnimation.cancel();
+        if(loadingAnimation !=null){
+            loadingAnimation.cancel();
         }
         tv_scanning.setAnimation(null);
         tv_scanning.setVisibility(View.INVISIBLE);
