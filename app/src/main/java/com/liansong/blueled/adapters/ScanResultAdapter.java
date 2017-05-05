@@ -71,7 +71,7 @@ public class ScanResultAdapter extends RecyclerView.Adapter<ScanResultViewHolder
             @Override
             public void onClick(View v) {
                 mContext.closeGatt();
-                BluetoothGatt bluetoothGatt = bean.getDevice().connectGatt(mContext, true, mBluetoothGattCallback);
+                BluetoothGatt bluetoothGatt = bean.getDevice().connectGatt(mContext, false, mBluetoothGattCallback);
                 if(bluetoothGatt!=null){
                     mContext.setBluetoothGatt(bluetoothGatt);
                     holder.getTv_devStatus().setText("Device Status: Connecting...");
