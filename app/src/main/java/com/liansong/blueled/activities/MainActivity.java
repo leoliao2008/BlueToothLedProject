@@ -285,6 +285,17 @@ public class MainActivity extends BlueToothActivity {
                     if(len==DATA_LEN){
                         showLog("data len="+DATA_LEN+",invCipher data...");
                         aes.invCipher(data, mDataReceived);
+                        showLog("result:");
+                        sb=new StringBuffer();
+                        for(byte b:mDataReceived){
+                            String hexString = Integer.toHexString(b&0xff);
+                            sb.append("0x");
+                            if(hexString.length()<2){
+                                sb.append('0');
+                            }
+                            sb.append(hexString).append(" ");
+                        }
+                        showLog(sb.toString().trim());
                         updateLedViews();
                     }
                 }
@@ -294,17 +305,6 @@ public class MainActivity extends BlueToothActivity {
     }
 
     private synchronized void updateLedViews() {
-        showLog("result:");
-        StringBuffer sb=new StringBuffer();
-        for(byte b:mDataReceived){
-            String hexString = Integer.toHexString(b&0xff);
-            sb.append("0x");
-            if(hexString.length()<2){
-                sb.append('0');
-            }
-            sb.append(hexString).append(" ");
-        }
-        showLog(sb.toString().trim());
         if(mDataReceived[0] == 'T' && mDataReceived[1] == 'R' && mDataReceived[2] == '1' && mDataReceived[3] == '7' &&
                 mDataReceived[4] == '0' && mDataReceived[5] == '3' && mDataReceived[6] == 'R' && mDataReceived[7] == '0' &&
                 mDataReceived[8] == '2'){

@@ -24,7 +24,7 @@ import csh.tiro.cc.aes;
 public abstract class BlueToothActivity extends BaseActivity {
 
     private static final int REQUEST_ENABLE_BT =911;
-    private static final int REQUEST_PERMISSIONS = 912;
+    private static final int REQUEST_SYSTEM_PERMISSIONS = 912;
     private BluetoothAdapter mBluetoothAdapter;
     private BluetoothManager mBluetoothManager;
     private boolean isBlueToothReady;
@@ -32,12 +32,16 @@ public abstract class BlueToothActivity extends BaseActivity {
     private BluetoothGattCallback mBluetoothGattCallback;
     private BluetoothGatt mBluetoothGatt;
 
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        mBluetoothGattCallback=initBlueToothGattCallBack();
+        aes.keyExpansionDefault();
+    }
 
     @Override
     protected void onPostCreate(@Nullable Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
-        mBluetoothGattCallback=initBlueToothGattCallBack();
-        aes.keyExpansionDefault();
         requestPermissions();
     }
 
@@ -51,7 +55,7 @@ public abstract class BlueToothActivity extends BaseActivity {
                 }
             }
             if(!isGranted){
-                requestPermissions(PERMISSIONS, REQUEST_PERMISSIONS);
+                requestPermissions(PERMISSIONS, REQUEST_SYSTEM_PERMISSIONS);
             }
         }
     }
@@ -109,7 +113,7 @@ public abstract class BlueToothActivity extends BaseActivity {
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if(requestCode== REQUEST_PERMISSIONS){
+        if(requestCode== REQUEST_SYSTEM_PERMISSIONS){
             for(int i=0;i<grantResults.length;i++){
                 if(grantResults[i]==PackageManager.PERMISSION_DENIED){
                     if(shouldShowRequestPermissionRationale(permissions[i])){
