@@ -30,6 +30,7 @@ import com.liansong.blueled.utils.AlertDialogueUtils;
 import com.liansong.blueled.utils.ToastUtil;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
@@ -44,15 +45,20 @@ public class MainActivity extends BlueToothActivity {
     private LedView mLed2;
     private ArrayList<String> arr_records =new ArrayList<>();
     private static final String SERVICE_UUID="0000fee9-0000-1000-8000-00805f9b34fb";
-    private static final String CHARACTER_UUID ="d44bc439-abfd-45a2-b575-925416129600";
+    private static final String CHARACTER_WRITE_UUID ="d44bc439-abfd-45a2-b575-925416129600";
+//    private static final String CHARACTER_NOTIFY_UUID ="d44bc439-abfd-45a2-b575-925416129601";
+    private ArrayList<BluetoothGattCharacteristic> mNotifyChars=new ArrayList<>();
     private static final String DESCRIPTOR_UUID ="00002902-0000-1000-8000-00805f9b34fb";
     private static final int DATA_LEN=16;
     private BluetoothGattService mGattService;
-    private BluetoothGattCharacteristic mGattCharacteristic;
+    private BluetoothGattCharacteristic mCharWrite;
+    private BluetoothGattCharacteristic mCharNotify;
     private byte[] mDataSend = {'T','R','1','7','0','3','R','0','2',0,0,0,0,0,0,0}; //用来存放发送到蓝牙设备的信息
     private byte[] mDataReceived = new byte[DATA_LEN];//用来存放蓝牙设备发送回来的信息
     private boolean isTiming;
     private Random mRandom=new Random();
+    private boolean isCharWriteFound;
+    private boolean isCharNotifyFound;
 
 
     public static void startActivity(Activity context){
@@ -167,26 +173,15 @@ public class MainActivity extends BlueToothActivity {
         }
         byte[] out=new byte[DATA_LEN];
         aes.cipher(mDataSend,out);
-       if(mGattCharacteristic !=null&& mGattCharacteristic.setValue(out)){
-           showLog("mGattCharacteristic.setValue(out)-----success");
-           mGattCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
-           if(getBluetoothGatt().writeCharacteristic(mGattCharacteristic)){
+       if(mCharWrite != null && mCharWrite.setValue(out)){
+           showLog("mCharWrite.setValue(out)-----success");
+           if(getBluetoothGatt().writeCharacteristic(mCharWrite)){
                showLog("getBluetoothGatt().writeCharacteristic-----success");
-               switch (ledIndex) {
-                   case 0:
-                       mLed1.toggleColor(isToLit);
-                       break;
-                   case 1:
-                       mLed2.toggleColor(isToLit);
-                       break;
-                   default:
-                       break;
-               }
            }else {
                showLog("getBluetoothGatt().writeCharacteristic-----fail");
            }
        }else {
-           showLog("mGattCharacteristic.setValue(out)-----fail");
+           showLog("mCharWrite.setValue(out)-----fail");
        }
 
     }
@@ -221,35 +216,23 @@ public class MainActivity extends BlueToothActivity {
                     mGattService = gatt.getService(UUID.fromString(SERVICE_UUID));
                     if(mGattService!=null){
                         showLog("target service found");
-                        mGattCharacteristic = mGattService.getCharacteristic(UUID.fromString(CHARACTER_UUID));
-                        if(mGattCharacteristic!=null){
-                            showLog("target characteristic found,but not sure if it has the required property...");
-                            if((mGattCharacteristic.getProperties()|BluetoothGattCharacteristic.PROPERTY_NOTIFY)>0){
-                                showLog("target characteristic possess the required property.");
-                                showLog("searching target descriptor from target characteristic... ");
-                                BluetoothGattDescriptor descriptor = mGattCharacteristic.getDescriptor(UUID.fromString(DESCRIPTOR_UUID));
-                                if(descriptor!=null){
-                                    showLog("Acquire target descriptor success.");
-                                    if(descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)){
-                                        showLog("Target descriptor value set is a success.");
-                                        if(gatt.setCharacteristicNotification(mGattCharacteristic,true)&&gatt.writeDescriptor(descriptor)){
-                                            showLog("setCharacteristicNotification & writeDescriptor success. All set!");
-                                            isSuccess=true;
-                                        }else {
-                                            showLog("setCharacteristicNotification or writeDescriptor fails");
-                                        }
-                                    }else {
-                                        showLog("Target descriptor value fail to set.");
-                                    }
-                                }else {
-                                    showLog("fail to acquire target descriptor.");
-                                }
-                            }else {
-                                showLog("target characteristic does not possess the required property.");
+                        List<BluetoothGattCharacteristic> characteristics = mGattService.getCharacteristics();
+                        showLog("iterating characteristics:");
+                        mNotifyChars.clear();
+                        for(BluetoothGattCharacteristic characteristic:characteristics){
+                            showLog("char uuid ="+characteristic.getUuid().toString());
+                            if(characteristic.getUuid().toString().equals(CHARACTER_WRITE_UUID)){
+                                mCharWrite=characteristic;
+                                isCharWriteFound=true;
+                            }else if(characteristic.getProperties()==BluetoothGattCharacteristic.PROPERTY_NOTIFY){
+                                mNotifyChars.add(characteristic);
                             }
-
-                        }else {
-                            showLog("target characteristic not found.");
+                        }
+                        if(isCharWriteFound&&mNotifyChars.size()>0){
+                            if(setNextNotifyChar(gatt)){
+                                showLog("write char is found and the first notify char is set.");
+                                isSuccess=true;
+                            }
                         }
                     }else {
                         showLog("target service not found");
@@ -264,8 +247,17 @@ public class MainActivity extends BlueToothActivity {
 
 
             @Override
+            public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
+                showLog("onDescriptorWrite");
+                super.onDescriptorWrite(gatt, descriptor, status);
+                setNextNotifyChar(gatt);
+            }
+
+
+            @Override
             public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
                 showLog("onCharacteristicChanged:");
+                showLog("UUID="+characteristic.getUuid().toString());
                 byte[] data = characteristic.getValue();
                 if(data==null){
                     showLog("data=null");
@@ -304,49 +296,77 @@ public class MainActivity extends BlueToothActivity {
         };
     }
 
-    private synchronized void updateLedViews() {
-        if(mDataReceived[0] == 'T' && mDataReceived[1] == 'R' && mDataReceived[2] == '1' && mDataReceived[3] == '7' &&
-                mDataReceived[4] == '0' && mDataReceived[5] == '3' && mDataReceived[6] == 'R' && mDataReceived[7] == '0' &&
-                mDataReceived[8] == '2'){
-            showLog("data format fits protocol.");
-            boolean isToLitLed1=false;
-            boolean isToLitLed2=false;
-            switch (mDataReceived[9]){
-                case 0:
-                    isToLitLed1=false;
-                    showLog("Led 1 is about to off.");
-                    break;
-                case 1:
-                    isToLitLed1=true;
-                    showLog("Led 1 is about to lit.");
-                    if(!mLed1.isLit()&&!mLed2.isLit()){
-                        showLog("目前led 1 和 led 2 都还没亮，此时收到了打开led 1的命令，符合开始计时条件，开始计时");
-                        startTiming();
-                    }
-                    break;
-                default:
-                    break;
-            }
-            switch (mDataReceived[10]){
-                case 0:
-                    isToLitLed2=false;
-                    showLog("Led 2 is about to off.");
-                    break;
-                case 1:
-                    isToLitLed2=true;
-                    showLog("Led 2 is about to lit.");
-                    if(mLed1.isLit()&&!mLed2.isLit()){
-                        showLog("目前led 1已经亮了，但led 2还没亮，此时收到了打开led 2的命令，停止计时。");
-                        stopTiming();
-                    }
-                    break;
-                default:
-                    break;
-            }
-            mLedStatusViewer.toggleLeds(isToLitLed1,isToLitLed2);
+    private boolean setNextNotifyChar(BluetoothGatt gatt){
+        boolean isSuccess=false;
+        if(mNotifyChars.size()==0){
+            isSuccess=true;
+            showLog("All the notify char have been set.");
         }else {
-            showLog("data format do not fit protocol.");
+            BluetoothGattCharacteristic notifyChar = mNotifyChars.get(0);
+            if(gatt.setCharacteristicNotification(notifyChar,true)){
+                BluetoothGattDescriptor descriptor = notifyChar.getDescriptor(UUID.fromString(DESCRIPTOR_UUID));
+                if(descriptor!=null){
+                    if(descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)){
+                        if(gatt.writeDescriptor(descriptor)){
+                            isSuccess=true;
+                            mNotifyChars.remove(0);
+                        }
+                    }
+                }
+            }
         }
+        return isSuccess;
+    }
+
+    private void updateLedViews() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if(mDataReceived[0] == 'T' && mDataReceived[1] == 'R' && mDataReceived[2] == '1' && mDataReceived[3] == '7' &&
+                   mDataReceived[4] == '0' && mDataReceived[5] == '3' && mDataReceived[6] == 'R' && mDataReceived[7] == '0' &&
+                   mDataReceived[8] == '2'){
+                    showLog("data format fits protocol.");
+                    boolean isToLitLed1=false;
+                    boolean isToLitLed2=false;
+                    switch (mDataReceived[9]){
+                        case 0:
+                            isToLitLed1=false;
+                            showLog("Led 1 is about to off.");
+                            break;
+                        case 1:
+                            isToLitLed1=true;
+                            showLog("Led 1 is about to lit.");
+                            if(!mLed1.isLit()&&!mLed2.isLit()){
+                                showLog("目前led 1 和 led 2 都还没亮，此时收到了打开led 1的命令，符合开始计时条件，开始计时");
+                                startTiming();
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                    switch (mDataReceived[10]){
+                        case 0:
+                            isToLitLed2=false;
+                            showLog("Led 2 is about to off.");
+                            break;
+                        case 1:
+                            isToLitLed2=true;
+                            showLog("Led 2 is about to lit.");
+                            if(mLed1.isLit()&&!mLed2.isLit()){
+                                showLog("目前led 1已经亮了，但led 2还没亮，此时收到了打开led 2的命令，停止计时。");
+                                stopTiming();
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                    mLedStatusViewer.toggleLeds(isToLitLed1,isToLitLed2);
+                }else {
+                    showLog("data format do not fit protocol.");
+                }
+            }
+        });
+
 
     }
 
@@ -402,7 +422,7 @@ public class MainActivity extends BlueToothActivity {
         }
         sb.append(sec).append('.');
         if(mil<10){
-            sb.append("0");
+            sb.append('0');
         }
         //01:45.02  1分45秒20毫秒
         sb.append(mil);
@@ -434,5 +454,13 @@ public class MainActivity extends BlueToothActivity {
 
     public byte getRandomDigit() {
         return (byte) mRandom.nextInt(128);
+    }
+
+    @Override
+    public void closeGatt() {
+        super.closeGatt();
+        mLedStatusViewer.setConnected(false);
+        isCharNotifyFound=false;
+        isCharWriteFound=false;
     }
 }
