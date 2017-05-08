@@ -135,7 +135,28 @@ public abstract class BlueToothActivity extends BaseActivity {
             for(int i=0;i<grantResults.length;i++){
                 if(grantResults[i]==PackageManager.PERMISSION_DENIED){
                     if(shouldShowRequestPermissionRationale(permissions[i])){
-                        alertDialogRequestPermission();
+                        StringBuffer msg=new StringBuffer();
+                        msg.append("为了保证本程序的正常运行，需要批准获得以下权限：\r\n");
+                        for(String pm:PERMISSIONS){
+                            msg.append(pm).append("\r\n");
+                        }
+                        msg.append("请按确认重新申请，按取消退出程序。");
+
+                        AlertDialogueUtils.showHint(
+                                BlueToothActivity.this,
+                                msg.toString(),
+                                new Runnable() {
+                                    @RequiresApi(api = Build.VERSION_CODES.M)
+                                    @Override
+                                    public void run() {
+                                        requestPermissions();
+                                    }
+                                }, new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        finish();
+                                    }
+                                });
                         break;
                     }else {
                         AlertDialogueUtils.showHint(
@@ -152,34 +173,6 @@ public abstract class BlueToothActivity extends BaseActivity {
                 }
             }
         }
-    }
-
-
-
-    private void alertDialogRequestPermission() {
-        StringBuffer msg=new StringBuffer();
-        msg.append("为了保证本程序的正常运行，需要批准获得以下权限：\r\n");
-        for(String pm:PERMISSIONS){
-            msg.append(pm).append("\r\n");
-        }
-        msg.append("请按确认重新申请，按取消退出程序。");
-
-        AlertDialogueUtils.showHint(
-                BlueToothActivity.this,
-                msg.toString(),
-                new Runnable() {
-                    @RequiresApi(api = Build.VERSION_CODES.M)
-                    @Override
-                    public void run() {
-                        requestPermissions();
-                    }
-                }, new Runnable() {
-                    @Override
-                    public void run() {
-                        finish();
-                    }
-                });
-
     }
 
     protected String convertLongMillisToSeconds(Long millis) {
