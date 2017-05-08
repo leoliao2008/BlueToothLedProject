@@ -4,6 +4,8 @@ import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -15,6 +17,9 @@ import android.support.annotation.RequiresApi;
 import android.widget.Toast;
 
 import com.liansong.blueled.utils.AlertDialogueUtils;
+
+import java.util.ArrayList;
+import java.util.UUID;
 
 import csh.tiro.cc.aes;
 
@@ -32,6 +37,10 @@ public abstract class BlueToothActivity extends BaseActivity {
     private static final String[] PERMISSIONS = new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION};
     private BluetoothGattCallback mBluetoothGattCallback;
     private BluetoothGatt mBluetoothGatt;
+    protected ArrayList<BluetoothGattCharacteristic> mNotifyChars=new ArrayList<>();
+    protected static final String SERVICE_UUID="0000fee9-0000-1000-8000-00805f9b34fb";
+    protected static final String CHARACTER_WRITE_UUID ="d44bc439-abfd-45a2-b575-925416129600";
+    protected static final String DESCRIPTOR_UUID ="00002902-0000-1000-8000-00805f9b34fb";
 
 
     @Override
@@ -80,14 +89,19 @@ public abstract class BlueToothActivity extends BaseActivity {
             Toast.makeText(this, "BlueTooth Le not supported.", Toast.LENGTH_SHORT).show();
             return false;
         }
-
         mBluetoothManager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
-        mBluetoothAdapter=mBluetoothManager.getAdapter();
-        if(mBluetoothAdapter==null||!mBluetoothAdapter.isEnabled()){
-            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-        }else {
-            isBlueToothReady=true;
+        if(mBluetoothManager!=null){
+            mBluetoothAdapter=mBluetoothManager.getAdapter();
+            if(mBluetoothAdapter!=null){
+                if(mBluetoothAdapter.isEnabled()){
+                    isBlueToothReady=true;
+                }else {
+                    Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                    startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+                }
+            }else {
+                showToast("mBluetoothAdapter == null");
+            }
         }
         return isBlueToothReady;
     }
@@ -135,6 +149,8 @@ public abstract class BlueToothActivity extends BaseActivity {
         }
     }
 
+
+
     private void alertDialogRequestPermission() {
         StringBuffer msg=new StringBuffer();
         msg.append("为了保证本程序的正常运行，需要批准获得以下权限：\r\n");
@@ -159,6 +175,27 @@ public abstract class BlueToothActivity extends BaseActivity {
                     }
                 });
 
+    }
+
+    protected String convertLongMillisToSeconds(Long millis) {
+        int min= (int) (millis/1000/60);
+        int sec= (int) (millis/1000%60);
+        int mil= (int) (millis-min*1000*60-sec*1000)/10;
+        StringBuffer sb=new StringBuffer();
+        if(min<10){
+            sb.append('0');
+        }
+        sb.append(min).append(':');
+        if(sec<10){
+            sb.append('0');
+        }
+        sb.append(sec).append('.');
+        if(mil<10){
+            sb.append('0');
+        }
+        //01:45.02  1分45秒20毫秒
+        sb.append(mil);
+        return sb.toString();
     }
 
     public BluetoothGatt getBluetoothGatt() {

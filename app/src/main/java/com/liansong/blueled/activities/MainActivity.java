@@ -44,11 +44,7 @@ public class MainActivity extends BlueToothActivity {
     private LedView mLed1;
     private LedView mLed2;
     private ArrayList<String> arr_records =new ArrayList<>();
-    private static final String SERVICE_UUID="0000fee9-0000-1000-8000-00805f9b34fb";
-    private static final String CHARACTER_WRITE_UUID ="d44bc439-abfd-45a2-b575-925416129600";
-//    private static final String CHARACTER_NOTIFY_UUID ="d44bc439-abfd-45a2-b575-925416129601";
-    private ArrayList<BluetoothGattCharacteristic> mNotifyChars=new ArrayList<>();
-    private static final String DESCRIPTOR_UUID ="00002902-0000-1000-8000-00805f9b34fb";
+
     private static final int DATA_LEN=16;
     private BluetoothGattService mGattService;
     private BluetoothGattCharacteristic mCharWrite;
@@ -238,7 +234,6 @@ public class MainActivity extends BlueToothActivity {
                         showLog("target service not found");
                     }
                 }
-                mLedStatusViewer.setConnected(isSuccess);
                 if(!isSuccess){
                     showLog("Fail to connect sensor led. Close gatt.");
                     closeGatt();
@@ -296,24 +291,31 @@ public class MainActivity extends BlueToothActivity {
         };
     }
 
-    private boolean setNextNotifyChar(BluetoothGatt gatt){
+    protected boolean setNextNotifyChar(BluetoothGatt gatt){
         boolean isSuccess=false;
-        if(mNotifyChars.size()==0){
+        int size = mNotifyChars.size();
+        if(size ==0){
             isSuccess=true;
+            mLedStatusViewer.setConnected(true);
             showLog("All the notify char have been set.");
         }else {
+            showLog("the quantity of remaining notify chars to set:"+ size);
             BluetoothGattCharacteristic notifyChar = mNotifyChars.get(0);
+            mNotifyChars.remove(0);
             if(gatt.setCharacteristicNotification(notifyChar,true)){
                 BluetoothGattDescriptor descriptor = notifyChar.getDescriptor(UUID.fromString(DESCRIPTOR_UUID));
                 if(descriptor!=null){
                     if(descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)){
                         if(gatt.writeDescriptor(descriptor)){
                             isSuccess=true;
-                            mNotifyChars.remove(0);
                         }
                     }
                 }
             }
+        }
+        if(!isSuccess){
+            closeGatt();
+            showLog("fail to set all the notify char, gatt close.");
         }
         return isSuccess;
     }
@@ -367,14 +369,13 @@ public class MainActivity extends BlueToothActivity {
             }
         });
 
-
     }
 
-    private void stopTiming() {
+    private synchronized void stopTiming() {
         isTiming=false;
     }
 
-    private void startTiming() {
+    private synchronized void startTiming() {
         if(!isTiming){
             updateConsole("符合计时条件，开始计时...");
             new AsyncTask<Void,Long,Void>(){
@@ -408,27 +409,6 @@ public class MainActivity extends BlueToothActivity {
         }
     }
 
-    private String convertLongMillisToSeconds(Long millis) {
-        int min= (int) (millis/1000/60);
-        int sec= (int) (millis/1000%60);
-        int mil= (int) (millis-min*1000*60-sec*1000)/10;
-        StringBuffer sb=new StringBuffer();
-        if(min<10){
-            sb.append('0');
-        }
-        sb.append(min).append(':');
-        if(sec<10){
-            sb.append('0');
-        }
-        sb.append(sec).append('.');
-        if(mil<10){
-            sb.append('0');
-        }
-        //01:45.02  1分45秒20毫秒
-        sb.append(mil);
-        return sb.toString();
-    }
-
     private void updateConsole(final String msg) {
         runOnUiThread(new Runnable() {
             @Override
@@ -460,6 +440,7 @@ public class MainActivity extends BlueToothActivity {
     public void closeGatt() {
         super.closeGatt();
         mLedStatusViewer.setConnected(false);
+        isTiming=false;
         isCharNotifyFound=false;
         isCharWriteFound=false;
     }
