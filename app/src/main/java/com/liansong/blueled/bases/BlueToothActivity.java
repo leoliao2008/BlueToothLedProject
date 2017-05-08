@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -19,6 +20,7 @@ import android.widget.Toast;
 import com.liansong.blueled.utils.AlertDialogueUtils;
 
 import java.util.ArrayList;
+import java.util.Random;
 
 import csh.tiro.cc.aes;
 
@@ -40,6 +42,19 @@ public abstract class BlueToothActivity extends BaseActivity {
     protected static final String SERVICE_UUID="0000fee9-0000-1000-8000-00805f9b34fb";
     protected static final String CHARACTER_WRITE_UUID ="d44bc439-abfd-45a2-b575-925416129600";
     protected static final String DESCRIPTOR_UUID ="00002902-0000-1000-8000-00805f9b34fb";
+    protected static final int DATA_LEN=16;
+    protected BluetoothGattService mGattService;
+    protected BluetoothGattCharacteristic mCharWrite;
+    protected BluetoothGattCharacteristic mCharNotify;
+    private Random mRandom=new Random();
+    /**
+     * 用来存放蓝牙设备发送回来的信息
+     */
+    protected byte[] mDataReceived = new byte[DATA_LEN];
+    /**
+     * 用来存放发送到蓝牙设备的信息
+     */
+    protected byte[] mDataSend = {'T','R','1','7','0','3','R','0','2',0,0,0,0,0,0,0};
     protected Runnable mRunnableReconnect=new Runnable() {
         @Override
         public void run() {
@@ -177,7 +192,7 @@ public abstract class BlueToothActivity extends BaseActivity {
 
     protected String convertLongMillisToSeconds(Long millis) {
         int min= (int) (millis/1000/60);
-        int sec= (int) (millis/1000%60);
+        int sec= (int) (millis - min * 60*1000)/1000;
         int mil= (int) (millis-min*1000*60-sec*1000)/10;
         StringBuffer sb=new StringBuffer();
         if(min<10){
@@ -259,6 +274,47 @@ public abstract class BlueToothActivity extends BaseActivity {
             mBluetoothGatt=null;
             BaseApplication.removeCallback(mRunnableReconnect);
         }
+    }
+
+    protected void displayBytesToHexString(byte[] data){
+        StringBuffer sb=new StringBuffer();
+        for(byte b:data){
+            String s = Integer.toHexString(b&0xff);
+            if(s.length()<2){
+                sb.append("0x0");
+            }else {
+                sb.append("0x");
+            }
+            sb.append(s);
+            sb.append(" ");
+        }
+        showLog(sb.toString().trim());
+    }
+
+    protected void sendCommandToLed(){
+        int index = 15;
+        while (index != 10) {
+            mDataSend[index] = getRandomDigit();
+            index--;
+        }
+        byte[] out=new byte[DATA_LEN];
+        aes.cipher(mDataSend,out);
+        showLog("data to be written:");
+        displayBytesToHexString(out);
+        if(mCharWrite != null && mCharWrite.setValue(out)){
+            showLog("mCharWrite.setValue(out)-----success");
+            if(getBluetoothGatt().writeCharacteristic(mCharWrite)){
+                showLog("getBluetoothGatt().writeCharacteristic-----success");
+            }else {
+                showLog("getBluetoothGatt().writeCharacteristic-----fail");
+            }
+        }else {
+            showLog("mCharWrite.setValue(out)-----fail");
+        }
+    }
+
+    private byte getRandomDigit() {
+        return (byte) (mRandom.nextInt(128)&0xff);
     }
 
     protected abstract void onGattClose();

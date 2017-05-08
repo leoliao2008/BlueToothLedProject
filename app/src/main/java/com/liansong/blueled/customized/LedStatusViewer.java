@@ -46,7 +46,7 @@ public class LedStatusViewer extends LinearLayout {
         }
         mContext=context;
         setBackgroundResource(R.drawable.shape_type_1);
-        width= BaseApplication.getScreenWidth()-mLayoutMargin*2;
+        width= BaseApplication.getScreenWidth()-mLayoutMargin*2-getPaddingLeft()-getPaddingRight();
         height=width/4;
         setOrientation(HORIZONTAL);
         char text='A';

@@ -5,7 +5,6 @@ import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
-import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -19,6 +18,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -31,7 +31,6 @@ import com.liansong.blueled.utils.AlertDialogueUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
 import csh.tiro.cc.aes;
@@ -43,22 +42,10 @@ public class MainActivity extends BlueToothActivity {
     private ArrayAdapter<String> mAdapter;
     private LedView mLed1;
     private LedView mLed2;
+    private Button btn_clearLog;
     private ArrayList<String> arr_records =new ArrayList<>();
-
-    private static final int DATA_LEN=16;
-    private BluetoothGattService mGattService;
-    private BluetoothGattCharacteristic mCharWrite;
-    private BluetoothGattCharacteristic mCharNotify;
-    /**
-     * 用来存放发送到蓝牙设备的信息
-     */
-    private byte[] mDataSend = {'T','R','1','7','0','3','R','0','2',0,0,0,0,0,0,0};
-    /**
-     * 用来存放蓝牙设备发送回来的信息
-     */
-    private byte[] mDataReceived = new byte[DATA_LEN];
     private boolean isTiming;
-    private Random mRandom=new Random();
+
     private boolean isCharWriteFound;
     private boolean isCharNotifyFound;
     /**
@@ -69,6 +56,7 @@ public class MainActivity extends BlueToothActivity {
      * 触发计时终止的led
      */
     private char ledTerminate;
+    private boolean isResponseToNotification;
 
 
     public static void startActivity(Activity context){
@@ -88,6 +76,7 @@ public class MainActivity extends BlueToothActivity {
         mLedStatusViewer= (LedStatusViewer) findViewById(R.id.main_cstm_led_viewer);
         mLed1=mLedStatusViewer.getLed1();
         mLed2=mLedStatusViewer.getLed2();
+        btn_clearLog= (Button) findViewById(R.id.main_btn_clear_log);
     }
 
     @Override
@@ -162,14 +151,17 @@ public class MainActivity extends BlueToothActivity {
             }
         });
 
+        btn_clearLog.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                arr_records.clear();
+                mAdapter.notifyDataSetChanged();
+            }
+        });
+
     }
 
     private void litLed(int ledIndex, boolean isToLit) {
-        int index = 15;
-        while (index != 10) {
-            mDataSend[index] = getRandomDigit();
-            index--;
-        }
         int value=isToLit?1:0;
         switch (ledIndex) {
             case 0:
@@ -181,20 +173,10 @@ public class MainActivity extends BlueToothActivity {
             default:
                 break;
         }
-        byte[] out=new byte[DATA_LEN];
-        aes.cipher(mDataSend,out);
-       if(mCharWrite != null && mCharWrite.setValue(out)){
-           showLog("mCharWrite.setValue(out)-----success");
-           if(getBluetoothGatt().writeCharacteristic(mCharWrite)){
-               showLog("getBluetoothGatt().writeCharacteristic-----success");
-           }else {
-               showLog("getBluetoothGatt().writeCharacteristic-----fail");
-           }
-       }else {
-           showLog("mCharWrite.setValue(out)-----fail");
-       }
-
+        sendCommandToLed();
     }
+
+
 
 
     @NonNull
@@ -245,6 +227,7 @@ public class MainActivity extends BlueToothActivity {
                             }
                         }
                         if(isCharWriteFound&&mNotifyChars.size()>0){
+                            mCharWrite.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
                             if(setNextNotifyChar(gatt)){
                                 showLog("write char is found and the first notify char is set.");
                                 isSuccess=true;
@@ -269,52 +252,18 @@ public class MainActivity extends BlueToothActivity {
             }
 
             @Override
-            public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-                showLog("onCharacteristicWrite");
-                super.onCharacteristicWrite(gatt, characteristic, status);
-            }
-
-            @Override
-            public void onReliableWriteCompleted(BluetoothGatt gatt, int status) {
-                showLog("onReliableWriteCompleted");
-                super.onReliableWriteCompleted(gatt, status);
-            }
-
-            @Override
             public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
                 showLog("onCharacteristicChanged:");
-                showLog("UUID="+characteristic.getUuid().toString());
-                byte[] data = characteristic.getValue();
-                if(data==null){
-                    showLog("data=null");
-                }else {
-                    int len=data.length;
-                    showLog("data length="+len);
-                    StringBuffer sb=new StringBuffer();
-                    for(byte b:data){
-                        String hexString = Integer.toHexString(b&0xff);
-                        sb.append("0x");
-                        if(hexString.length()<2){
-                            sb.append('0');
+                //不知道为什么同样的内容回返回两次，这里只使用一次回复，忽视另外一次回复。by leo 5月8日
+                isResponseToNotification=!isResponseToNotification;
+                if(isResponseToNotification){
+                    byte[] data = characteristic.getValue();
+                    if(data!=null){
+                        int len=data.length;
+                        if(len==DATA_LEN){
+                            aes.invCipher(data, mDataReceived);
+                            updateLedViews();
                         }
-                        sb.append(hexString).append(" ");
-                    }
-                    showLog(sb.toString().trim());
-                    if(len==DATA_LEN){
-                        showLog("data len="+DATA_LEN+",invCipher data...");
-                        aes.invCipher(data, mDataReceived);
-                        showLog("result:");
-                        sb=new StringBuffer();
-                        for(byte b:mDataReceived){
-                            String hexString = Integer.toHexString(b&0xff);
-                            sb.append("0x");
-                            if(hexString.length()<2){
-                                sb.append('0');
-                            }
-                            sb.append(hexString).append(" ");
-                        }
-                        showLog(sb.toString().trim());
-                        updateLedViews();
                     }
                 }
 
@@ -353,7 +302,7 @@ public class MainActivity extends BlueToothActivity {
         return isSuccess;
     }
 
-    private void updateLedViews() {
+    private synchronized void updateLedViews() {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -400,13 +349,15 @@ public class MainActivity extends BlueToothActivity {
         boolean isLedOneLit=mLed1.isLit();
         boolean isLedTwoLit=mLed2.isLit();
         if(!isTiming){
-            //在未开始计时的情况下，找出没亮，然而将被点亮的led，开始计时。
-            if(isToLitLed1&&!isLedOneLit){
-                ledTrigger='A';
-                startTiming();
-            }else if(isToLitLed2&&!isLedTwoLit){
-                ledTrigger='B';
-                startTiming();
+            //在未开始计时的情况下，两盏灯都没亮的情况下，找出没亮，然而将被点亮的led，开始计时。
+            if(!isLedOneLit&&!isLedTwoLit){
+                if(isToLitLed1){
+                    ledTrigger='A';
+                    startTiming();
+                }else if(isToLitLed2){
+                    ledTrigger='B';
+                    startTiming();
+                }
             }
 
         }else {
@@ -439,8 +390,8 @@ public class MainActivity extends BlueToothActivity {
                 protected Void doInBackground(Void... params) {
                     long timeMilli=0;
                     while (isTiming){
-                        SystemClock.sleep(10);
-                        timeMilli+=10;
+                        SystemClock.sleep(50);
+                        timeMilli+=70;
                         publishProgress(timeMilli);
                     }
                     return null;
@@ -483,9 +434,7 @@ public class MainActivity extends BlueToothActivity {
         updateConsole(msg);
     }
 
-    public byte getRandomDigit() {
-        return (byte) mRandom.nextInt(128);
-    }
+
 
     @Override
     protected void onGattClose() {

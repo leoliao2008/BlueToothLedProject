@@ -6,6 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:padding="@dimen/padding_type_1"
     tools:context="com.liansong.blueled.activities.MainActivity">
 
    <com.liansong.blueled.customized.LedStatusViewer
@@ -30,4 +31,11 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"/>
+    <Button
+        android:layout_margin="@dimen/margin_small"
+        android:background="@drawable/shape_type_1"
+        android:id="@+id/main_btn_clear_log"
+        android:text="Clear Log"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
 </LinearLayout>
