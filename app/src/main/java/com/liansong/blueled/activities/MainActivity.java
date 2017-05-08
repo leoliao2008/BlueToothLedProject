@@ -28,7 +28,6 @@ import com.liansong.blueled.bases.BlueToothActivity;
 import com.liansong.blueled.customized.LedStatusViewer;
 import com.liansong.blueled.customized.LedView;
 import com.liansong.blueled.utils.AlertDialogueUtils;
-import com.liansong.blueled.utils.ToastUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,12 +49,26 @@ public class MainActivity extends BlueToothActivity {
     private BluetoothGattService mGattService;
     private BluetoothGattCharacteristic mCharWrite;
     private BluetoothGattCharacteristic mCharNotify;
-    private byte[] mDataSend = {'T','R','1','7','0','3','R','0','2',0,0,0,0,0,0,0}; //用来存放发送到蓝牙设备的信息
-    private byte[] mDataReceived = new byte[DATA_LEN];//用来存放蓝牙设备发送回来的信息
+    /**
+     * 用来存放发送到蓝牙设备的信息
+     */
+    private byte[] mDataSend = {'T','R','1','7','0','3','R','0','2',0,0,0,0,0,0,0};
+    /**
+     * 用来存放蓝牙设备发送回来的信息
+     */
+    private byte[] mDataReceived = new byte[DATA_LEN];
     private boolean isTiming;
     private Random mRandom=new Random();
     private boolean isCharWriteFound;
     private boolean isCharNotifyFound;
+    /**
+     * 触发计时开始的led
+     */
+    private char ledTrigger;
+    /**
+     * 触发计时终止的led
+     */
+    private char ledTerminate;
 
 
     public static void startActivity(Activity context){
@@ -133,7 +146,7 @@ public class MainActivity extends BlueToothActivity {
                 if(mLedStatusViewer.isConnected()){
                     litLed(0,!mLed1.isLit());
                 }else {
-                    ToastUtil.showToast("感应灯未链接，请先尝试链接感应灯。");
+                    showToast("感应灯未链接，请先尝试链接感应灯。");
                 }
             }
         });
@@ -144,7 +157,7 @@ public class MainActivity extends BlueToothActivity {
                 if(mLedStatusViewer.isConnected()){
                     litLed(1,!mLed2.isLit());
                 }else {
-                    ToastUtil.showToast("感应灯未链接，请先尝试链接感应灯。");
+                    showToast("感应灯未链接，请先尝试链接感应灯。");
                 }
             }
         });
@@ -193,6 +206,7 @@ public class MainActivity extends BlueToothActivity {
                 if(newState== BluetoothProfile.STATE_CONNECTED){
                     AlertDialogueUtils.dismissDialog();
                     showLog("Gatt connected.");
+                    setBluetoothGatt(gatt);
                     showLog("begin to discover gatt service...");
                     if(gatt.discoverServices()){
                         showLog("discovering......");
@@ -202,8 +216,8 @@ public class MainActivity extends BlueToothActivity {
                 }else {
                     showLog("Gatt disconnected.");
                     if(getBluetoothGatt()!=null){
-                        showLog("try to re-connect gatt...");
-                        BaseApplication.postDelay(mRunnableReconnect,500);
+                        showLog("try to re-connect gatt in 1s...");
+                        BaseApplication.postDelay(mRunnableReconnect,1000);
                     }else {
                         closeGatt();
                     }
@@ -357,10 +371,6 @@ public class MainActivity extends BlueToothActivity {
                         case 1:
                             isToLitLed1=true;
                             showLog("Led 1 is about to lit.");
-                            if(!mLed1.isLit()&&!mLed2.isLit()){
-                                showLog("目前led 1 和 led 2 都还没亮，此时收到了打开led 1的命令，符合开始计时条件，开始计时");
-                                startTiming();
-                            }
                             break;
                         default:
                             break;
@@ -373,21 +383,42 @@ public class MainActivity extends BlueToothActivity {
                         case 1:
                             isToLitLed2=true;
                             showLog("Led 2 is about to lit.");
-                            if(mLed1.isLit()&&!mLed2.isLit()){
-                                showLog("目前led 1已经亮了，但led 2还没亮，此时收到了打开led 2的命令，停止计时。");
-                                stopTiming();
-                            }
                             break;
                         default:
                             break;
                     }
+                    shouldUpdateTimingView(isToLitLed1,isToLitLed2);
                     mLedStatusViewer.toggleLeds(isToLitLed1,isToLitLed2);
                 }else {
                     showLog("data format do not fit protocol.");
                 }
             }
         });
+    }
 
+    private void shouldUpdateTimingView(boolean isToLitLed1,boolean isToLitLed2){
+        boolean isLedOneLit=mLed1.isLit();
+        boolean isLedTwoLit=mLed2.isLit();
+        if(!isTiming){
+            //在未开始计时的情况下，找出没亮，然而将被点亮的led，开始计时。
+            if(isToLitLed1&&!isLedOneLit){
+                ledTrigger='A';
+                startTiming();
+            }else if(isToLitLed2&&!isLedTwoLit){
+                ledTrigger='B';
+                startTiming();
+            }
+
+        }else {
+            //在计时已经开始的情况下，找出状态将发生变化的led，判断是由哪盏灯引起的计时终止。
+            if(isLedOneLit!=isToLitLed1){
+                ledTerminate='A';
+                stopTiming();
+            }else if(isLedTwoLit!=isToLitLed2){
+                ledTerminate='B';
+                stopTiming();
+            }
+        }
     }
 
     protected synchronized void stopTiming() {
@@ -422,7 +453,9 @@ public class MainActivity extends BlueToothActivity {
 
                 @Override
                 protected void onPostExecute(Void aVoid) {
-                    updateConsole("计时结束，间隔时间："+tv_timing.getText().toString());
+                    StringBuffer sb=new StringBuffer();
+                    sb.append("计时结束，").append("从").append(ledTrigger).append("到").append(ledTerminate).append(",间隔时间：").append(tv_timing.getText().toString());
+                    updateConsole(sb.toString());
                 }
             }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
         }
@@ -439,15 +472,14 @@ public class MainActivity extends BlueToothActivity {
         });
     }
 
+
     @Override
-    protected void showLog(String msg) {
-        super.showLog(msg);
+    protected void onShowLog(String msg) {
         updateConsole(msg);
     }
 
     @Override
-    protected void showToast(String msg) {
-        super.showToast(msg);
+    protected void onShowToast(String msg) {
         updateConsole(msg);
     }
 

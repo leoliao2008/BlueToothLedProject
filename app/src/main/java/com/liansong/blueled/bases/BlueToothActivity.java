@@ -218,6 +218,7 @@ public abstract class BlueToothActivity extends BaseActivity {
     }
 
     protected boolean reconnectGatt() {
+        showLog("reconnecting......");
         boolean isSuccess=false;
         BluetoothGatt gatt = getBluetoothGatt();
         if(gatt !=null){
@@ -245,7 +246,8 @@ public abstract class BlueToothActivity extends BaseActivity {
                 }
             }
         }else {
-            showLog("fail to get gatt, abort re-connect.");
+            showLog("gatt==null, the disconnect is not accidental, no need to re-connect.");
+            BaseApplication.removeCallback(mRunnableReconnect);
         }
         if(isSuccess){
             BaseApplication.removeCallback(mRunnableReconnect);

@@ -49,9 +49,15 @@ public abstract class BaseActivity extends AppCompatActivity {
 
     protected void showToast(String msg){
         ToastUtil.showToast(msg);
+        onShowToast(msg);
     }
+
+    protected abstract void onShowToast(String msg);
 
     protected void showLog(String msg){
         LogUtil.showLog(BaseActivity.class.getSimpleName(),msg);
+        onShowLog(msg);
     }
+
+    protected abstract void onShowLog(String msg);
 }

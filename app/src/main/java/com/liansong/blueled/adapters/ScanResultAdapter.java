@@ -73,7 +73,6 @@ public class ScanResultAdapter extends RecyclerView.Adapter<ScanResultViewHolder
                 mContext.closeGatt();
                 BluetoothGatt bluetoothGatt = bean.getDevice().connectGatt(mContext, false, mBluetoothGattCallback);
                 if(bluetoothGatt!=null){
-                    mContext.setBluetoothGatt(bluetoothGatt);
                     holder.getTv_devStatus().setText("Device Status: Connecting...");
                     final AlphaAnimation alphaAnimation=new AlphaAnimation(0.3f,1.f);
                     alphaAnimation.setDuration(800);
