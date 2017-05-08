@@ -48,4 +48,8 @@ public class BaseApplication extends Application {
     public static void postDelay(Runnable runnable,long millis){
         handler.postDelayed(runnable,millis);
     }
+
+    public static void removeCallback(Runnable runnable){
+        handler.removeCallbacks(runnable);
+    }
 }

@@ -23,6 +23,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import com.liansong.blueled.R;
+import com.liansong.blueled.bases.BaseApplication;
 import com.liansong.blueled.bases.BlueToothActivity;
 import com.liansong.blueled.customized.LedStatusViewer;
 import com.liansong.blueled.customized.LedView;
@@ -159,10 +160,10 @@ public class MainActivity extends BlueToothActivity {
         int value=isToLit?1:0;
         switch (ledIndex) {
             case 0:
-                mDataSend[9]= (byte) (value&0xff);
+                mDataSend[9]= (byte) value;
                 break;
             case 1:
-                mDataSend[10]= (byte) (value&0xff);
+                mDataSend[10]= (byte) value;
                 break;
             default:
                 break;
@@ -188,7 +189,7 @@ public class MainActivity extends BlueToothActivity {
     protected BluetoothGattCallback initBlueToothGattCallBack() {
         return new BluetoothGattCallback() {
             @Override
-            public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+            public void onConnectionStateChange(final BluetoothGatt gatt, int status, int newState) {
                 if(newState== BluetoothProfile.STATE_CONNECTED){
                     AlertDialogueUtils.dismissDialog();
                     showLog("Gatt connected.");
@@ -200,7 +201,12 @@ public class MainActivity extends BlueToothActivity {
                     }
                 }else {
                     showLog("Gatt disconnected.");
-                    closeGatt();
+                    if(getBluetoothGatt()!=null){
+                        showLog("try to re-connect gatt...");
+                        BaseApplication.postDelay(mRunnableReconnect,500);
+                    }else {
+                        closeGatt();
+                    }
                 }
             }
 
@@ -248,6 +254,17 @@ public class MainActivity extends BlueToothActivity {
                 setNextNotifyChar(gatt);
             }
 
+            @Override
+            public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+                showLog("onCharacteristicWrite");
+                super.onCharacteristicWrite(gatt, characteristic, status);
+            }
+
+            @Override
+            public void onReliableWriteCompleted(BluetoothGatt gatt, int status) {
+                showLog("onReliableWriteCompleted");
+                super.onReliableWriteCompleted(gatt, status);
+            }
 
             @Override
             public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
@@ -290,6 +307,8 @@ public class MainActivity extends BlueToothActivity {
             }
         };
     }
+
+
 
     protected boolean setNextNotifyChar(BluetoothGatt gatt){
         boolean isSuccess=false;
@@ -371,11 +390,11 @@ public class MainActivity extends BlueToothActivity {
 
     }
 
-    private synchronized void stopTiming() {
+    protected synchronized void stopTiming() {
         isTiming=false;
     }
 
-    private synchronized void startTiming() {
+    protected synchronized void startTiming() {
         if(!isTiming){
             updateConsole("符合计时条件，开始计时...");
             new AsyncTask<Void,Long,Void>(){
@@ -437,11 +456,11 @@ public class MainActivity extends BlueToothActivity {
     }
 
     @Override
-    public void closeGatt() {
-        super.closeGatt();
+    protected void onGattClose() {
         mLedStatusViewer.setConnected(false);
         isTiming=false;
         isCharNotifyFound=false;
         isCharWriteFound=false;
     }
+
 }

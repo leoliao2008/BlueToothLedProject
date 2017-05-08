@@ -2,10 +2,10 @@ package com.liansong.blueled.bases;
 
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
-import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -19,7 +19,6 @@ import android.widget.Toast;
 import com.liansong.blueled.utils.AlertDialogueUtils;
 
 import java.util.ArrayList;
-import java.util.UUID;
 
 import csh.tiro.cc.aes;
 
@@ -35,12 +34,18 @@ public abstract class BlueToothActivity extends BaseActivity {
     private BluetoothManager mBluetoothManager;
     private boolean isBlueToothReady;
     private static final String[] PERMISSIONS = new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION};
-    private BluetoothGattCallback mBluetoothGattCallback;
+    protected BluetoothGattCallback mBluetoothGattCallback;
     private BluetoothGatt mBluetoothGatt;
     protected ArrayList<BluetoothGattCharacteristic> mNotifyChars=new ArrayList<>();
     protected static final String SERVICE_UUID="0000fee9-0000-1000-8000-00805f9b34fb";
     protected static final String CHARACTER_WRITE_UUID ="d44bc439-abfd-45a2-b575-925416129600";
     protected static final String DESCRIPTOR_UUID ="00002902-0000-1000-8000-00805f9b34fb";
+    protected Runnable mRunnableReconnect=new Runnable() {
+        @Override
+        public void run() {
+            reconnectGatt();
+        }
+    };
 
 
     @Override
@@ -212,7 +217,44 @@ public abstract class BlueToothActivity extends BaseActivity {
         closeGatt();
     }
 
+    protected boolean reconnectGatt() {
+        boolean isSuccess=false;
+        BluetoothGatt gatt = getBluetoothGatt();
+        if(gatt !=null){
+            if(Build.BRAND.toLowerCase().equals("samsung")){
+                isSuccess= gatt.connect();
+                if(!isSuccess){
+                    showLog("fail to reconnect, retry in 1s...");
+                    BaseApplication.postDelay(mRunnableReconnect,1000);
+                }else {
+                    showLog("re-connect success.");
+                }
+            }else {
+                BluetoothDevice bluetoothDevice = gatt.getDevice();
+                if(bluetoothDevice!=null){
+                    BluetoothGatt bluetoothGatt = bluetoothDevice.connectGatt(this, false, mBluetoothGattCallback);
+                    isSuccess=bluetoothGatt!=null;
+                    if(!isSuccess){
+                        showLog("fail to reconnect, retry in 3s...");
+                        BaseApplication.postDelay(mRunnableReconnect,3000);
+                    }else {
+                        showLog("re-connect success.");
+                    }
+                }else {
+                    showLog("bluetoothDevice == null, abort re-connect.");
+                }
+            }
+        }else {
+            showLog("fail to get gatt, abort re-connect.");
+        }
+        if(isSuccess){
+            BaseApplication.removeCallback(mRunnableReconnect);
+        }
+        return isSuccess;
+    }
+
     public void closeGatt(){
+        onGattClose();
         if(mBluetoothGatt!=null){
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                 mBluetoothGatt.abortReliableWrite();
@@ -220,6 +262,9 @@ public abstract class BlueToothActivity extends BaseActivity {
             mBluetoothGatt.disconnect();
             mBluetoothGatt.close();
             mBluetoothGatt=null;
+            BaseApplication.removeCallback(mRunnableReconnect);
         }
     }
+
+    protected abstract void onGattClose();
 }
