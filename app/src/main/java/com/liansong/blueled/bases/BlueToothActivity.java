@@ -302,13 +302,13 @@ public abstract class BlueToothActivity extends BaseActivity {
         }
         byte[] out=new byte[DATA_LEN];
         aes.cipher(mDataSend,out);
-        showLog("data to be written:");
+        showLog("data to be send to led device:");
         displayBytesToHexString(out);
         if(mCharWrite != null && mCharWrite.setValue(out)){
             if(getBluetoothGatt().writeCharacteristic(mCharWrite)){
-                showLog("getBluetoothGatt().writeCharacteristic-----success");
+                showLog("send data-----success");
             }else {
-                showLog("getBluetoothGatt().writeCharacteristic-----fail");
+                showLog("send data-----fail");
             }
         }else {
             showLog("mCharWrite.setValue(out)-----fail");

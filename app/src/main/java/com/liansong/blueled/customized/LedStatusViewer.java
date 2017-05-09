@@ -63,6 +63,7 @@ public class LedStatusViewer extends LinearLayout {
         }
         mLed1 = (LedView) getChildAt(0);
         mLed2 = (LedView) getChildAt(1);
+        setKeepScreenOn(true);
     }
 
     public boolean isConnected() {

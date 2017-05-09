@@ -62,7 +62,6 @@ public class MainActivity extends BlueToothActivity {
         context.startActivity(new Intent(context,MainActivity.class));
     }
 
-
     @Override
     protected int setLayout() {
         return R.layout.activity_main;
@@ -233,7 +232,7 @@ public class MainActivity extends BlueToothActivity {
                             BaseApplication.post(new Runnable() {
                                 @Override
                                 public void run() {
-                                    //坚持只设置一个notify char，拒绝盲目跟风。by leo 5月9日
+                                    //坚持只设置一个notify char。by leo 5月9日
                                     setNotifyChar(gatt,mNotifyChars.get(0));
 //                                    setNextNotifyChar(gatt);
                                 }
@@ -255,15 +254,33 @@ public class MainActivity extends BlueToothActivity {
                 showLog("onDescriptorWrite");
                 super.onDescriptorWrite(gatt, descriptor, status);
 //                setNextNotifyChar(gatt);
-                //坚持只设置一个notify char，拒绝盲目跟风。by leo 5月9日
+                //坚持只设置一个notify char。by leo 5月9日
                 mLedStatusViewer.setConnected(status==BluetoothGatt.GATT_SUCCESS);
                 showLog("LedViewer is synchronized with Led devices:"+mLedStatusViewer.isConnected());
             }
 
             @Override
+            public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+                showLog("onCharacteristicWrite");
+                byte[] bytes = characteristic.getValue();
+                if(status==BluetoothGatt.GATT_SUCCESS){
+                    if(bytes!=null&&bytes.length>0){
+                        showLog("data led device actually receive:");
+                        displayBytesToHexString(bytes);
+                    }else {
+                        showLog("data led device actually receive is null.");
+                    }
+                }else {
+                    showLog("write operation fail,target led fail to get any data.");
+                }
+
+                super.onCharacteristicWrite(gatt, characteristic, status);
+            }
+
+            @Override
             public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
                 showLog("onCharacteristicChanged:");
-                //不知道为什么同样的内容回返回两次，这里只使用一次回复，忽视另外一次回复。by leo 5月8日
+//               //不知道为什么同样的内容回返回两次，这里只使用一次回复，忽视另外一次回复。by leo 5月8日
 //                isResponseToNotification=!isResponseToNotification;
 //                if(isResponseToNotification){
 //
