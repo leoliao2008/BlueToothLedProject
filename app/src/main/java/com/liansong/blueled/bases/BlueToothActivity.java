@@ -44,6 +44,9 @@ public abstract class BlueToothActivity extends BaseActivity {
     protected static final String SERVICE_UUID="0000fee9-0000-1000-8000-00805f9b34fb";
     protected static final String CHARACTER_WRITE_UUID ="d44bc439-abfd-45a2-b575-925416129600";
     protected static final String DESCRIPTOR_UUID ="00002902-0000-1000-8000-00805f9b34fb";
+    /**
+     * 发送给蓝牙的数据的长度
+     */
     protected static final int DATA_LEN=16;
     protected BluetoothGattService mGattService;
     protected BluetoothGattCharacteristic mCharWrite;
@@ -54,9 +57,16 @@ public abstract class BlueToothActivity extends BaseActivity {
      */
     protected byte[] mDataReceived = new byte[DATA_LEN];
     /**
-     * 用来存放发送到蓝牙设备的信息
+     * 用来存放未经加密的命令代码
      */
-    protected byte[] mDataSend = {'T','R','1','7','0','3','R','0','2',0,0,0,0,0,0,0};
+    protected byte[] mCommandData = {'T','R','1','7','0','3','R','0','2',0,0,0,0,0,0,0};
+    /**
+     * 用来存放加密的即将发送到蓝牙设备的命令代码
+     */
+    protected byte[] mDataSend=new byte[DATA_LEN];
+    /**
+     * 断线后重新链接蓝牙的操作单位。
+     */
     protected Runnable mRunnableReconnect=new Runnable() {
         @Override
         public void run() {
@@ -213,27 +223,12 @@ public abstract class BlueToothActivity extends BaseActivity {
         return sb.toString();
     }
 
-    public BluetoothGatt getBluetoothGatt() {
-        return mBluetoothGatt;
-    }
-
-    public void setBluetoothGatt(BluetoothGatt bluetoothGatt) {
-        mBluetoothGatt = bluetoothGatt;
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        closeGatt();
-    }
-
-    protected boolean reconnectGatt() {
+    private boolean reconnectGatt() {
         showLog("reconnecting......");
         boolean isSuccess=false;
-        BluetoothGatt gatt = getBluetoothGatt();
-        if(gatt !=null){
+        if(mBluetoothGatt !=null){
             if(Build.BRAND.toLowerCase().equals("samsung")){
-                isSuccess= gatt.connect();
+                isSuccess= mBluetoothGatt.connect();
                 if(!isSuccess){
                     showLog("fail to reconnect, retry in 1s...");
                     BaseApplication.postDelay(mRunnableReconnect,1000);
@@ -241,7 +236,7 @@ public abstract class BlueToothActivity extends BaseActivity {
                     showLog("re-connect success.");
                 }
             }else {
-                BluetoothDevice bluetoothDevice = gatt.getDevice();
+                BluetoothDevice bluetoothDevice = mBluetoothGatt.getDevice();
                 if(bluetoothDevice!=null){
                     BluetoothGatt bluetoothGatt = bluetoothDevice.connectGatt(this, false, mBluetoothGattCallback);
                     isSuccess=bluetoothGatt!=null;
@@ -294,25 +289,33 @@ public abstract class BlueToothActivity extends BaseActivity {
         showLog(sb.toString().trim());
     }
 
-    protected void sendCommandToLed(){
+    protected boolean sendCommandToLed(){
+        boolean isSuccess=false;
         int index = 15;
         while (index != 10) {
-            mDataSend[index] = getRandomDigit();
+            mCommandData[index] = getRandomDigit();
             index--;
         }
-        byte[] out=new byte[DATA_LEN];
-        aes.cipher(mDataSend,out);
-        showLog("data to be send to led device:");
-        displayBytesToHexString(out);
-        if(mCharWrite != null && mCharWrite.setValue(out)){
-            if(getBluetoothGatt().writeCharacteristic(mCharWrite)){
+        aes.cipher(mCommandData, mDataSend);
+//        showLog("data to be send to led device:");
+//        displayBytesToHexString(mDataSend);
+        mBluetoothGatt.beginReliableWrite();
+        if(mCharWrite != null && mCharWrite.setValue(mDataSend)){
+            if(mBluetoothGatt.writeCharacteristic(mCharWrite)){
                 showLog("send data-----success");
+                isSuccess=true;
             }else {
                 showLog("send data-----fail");
             }
         }else {
             showLog("mCharWrite.setValue(out)-----fail");
         }
+        if(!isSuccess){
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                mBluetoothGatt.abortReliableWrite();
+            }
+        }
+        return isSuccess;
     }
 
     protected boolean setNotifyChar(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
@@ -333,6 +336,20 @@ public abstract class BlueToothActivity extends BaseActivity {
             mCharNotify=characteristic;
         }
         return isSuccess;
+    }
+
+    public BluetoothGatt getBluetoothGatt() {
+        return mBluetoothGatt;
+    }
+
+    public void setBluetoothGatt(BluetoothGatt bluetoothGatt) {
+        mBluetoothGatt = bluetoothGatt;
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        closeGatt();
     }
 
     private byte getRandomDigit() {

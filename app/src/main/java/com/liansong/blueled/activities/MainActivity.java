@@ -9,6 +9,7 @@ import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -30,6 +31,7 @@ import com.liansong.blueled.customized.LedView;
 import com.liansong.blueled.utils.AlertDialogueUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -161,19 +163,19 @@ public class MainActivity extends BlueToothActivity {
 
 
 
-    private void litLed(int ledIndex, boolean isToLit) {
+    private boolean litLed(int ledIndex, boolean isToLit) {
         int value=isToLit?1:0;
         switch (ledIndex) {
             case 0:
-                mDataSend[9]= (byte) value;
+                mCommandData[9]= (byte) value;
                 break;
             case 1:
-                mDataSend[10]= (byte) value;
+                mCommandData[10]= (byte) value;
                 break;
             default:
                 break;
         }
-        sendCommandToLed();
+        return sendCommandToLed();
     }
 
 
@@ -226,7 +228,8 @@ public class MainActivity extends BlueToothActivity {
                             }
                         }
                         if(isCharWriteFound&&mNotifyChars.size()>0){
-                            mCharWrite.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+//                            mCharWrite.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);//怀疑会导致重复发包的情况，禁掉。
+                            mCharWrite.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
                             isSuccess=true;
                             //有坑，必须在主线程中设置notify char. by leo 5月9日
                             BaseApplication.post(new Runnable() {
@@ -255,9 +258,10 @@ public class MainActivity extends BlueToothActivity {
                 super.onDescriptorWrite(gatt, descriptor, status);
 //                setNextNotifyChar(gatt);
                 //坚持只设置一个notify char。by leo 5月9日
-                mLedStatusViewer.setConnected(status==BluetoothGatt.GATT_SUCCESS);
+                mLedStatusViewer.setConnected(status==BluetoothGatt.GATT_SUCCESS);//如果成功写入description了，表示设备链接的最后一步完成，可以通讯了。 by leo 5月9日
                 showLog("LedViewer is synchronized with Led devices:"+mLedStatusViewer.isConnected());
             }
+
 
             @Override
             public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
@@ -265,8 +269,15 @@ public class MainActivity extends BlueToothActivity {
                 byte[] bytes = characteristic.getValue();
                 if(status==BluetoothGatt.GATT_SUCCESS){
                     if(bytes!=null&&bytes.length>0){
-                        showLog("data led device actually receive:");
-                        displayBytesToHexString(bytes);
+                        if(Arrays.equals(bytes,mDataSend)){
+                            showLog("date mathe, executeReliableWrite");
+                            gatt.executeReliableWrite();
+                        }else {
+                            showLog("date not mathe, abortReliableWrite");
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                                gatt.abortReliableWrite();
+                            }
+                        }
                     }else {
                         showLog("data led device actually receive is null.");
                     }
@@ -275,6 +286,19 @@ public class MainActivity extends BlueToothActivity {
                 }
 
                 super.onCharacteristicWrite(gatt, characteristic, status);
+            }
+
+            @Override
+            public void onReliableWriteCompleted(BluetoothGatt gatt, int status) {
+                if(status==BluetoothGatt.GATT_SUCCESS){
+                    showLog("onReliableWriteCompleted, result: success.");
+                }else {
+                    showLog("onReliableWriteCompleted, result: fails.");
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                    gatt.abortReliableWrite();
+                }
+                super.onReliableWriteCompleted(gatt, status);
             }
 
             @Override
