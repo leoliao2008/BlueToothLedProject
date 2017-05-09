@@ -73,6 +73,15 @@ public abstract class BlueToothActivity extends BaseActivity {
             reconnectGatt();
         }
     };
+    /**
+     * 发送命令到蓝牙的执行单位。
+     */
+    protected Runnable mRunnableSendCommand=new Runnable() {
+        @Override
+        public void run() {
+            sendCommandToLed();
+        }
+    };
 
 
     @Override
@@ -89,7 +98,7 @@ public abstract class BlueToothActivity extends BaseActivity {
     private void requestPermissions(){
         boolean isGranted=true;
         for(String pm:PERMISSIONS){
-            if(checkSelfPermission(pm)==PackageManager.PERMISSION_DENIED){
+            if(checkSelfPermission(pm) == PackageManager.PERMISSION_DENIED){
                 isGranted=false;
                 break;
             }
@@ -108,7 +117,7 @@ public abstract class BlueToothActivity extends BaseActivity {
     private void showScanView() {
         closeGatt();
         if(mBluetoothAdapter!=null&&mBluetoothAdapter.isEnabled()&&mBluetoothGattCallback!=null){
-            AlertDialogueUtils.showScanDevView(this,mBluetoothAdapter,mBluetoothGattCallback);
+            AlertDialogueUtils.showScanDevView(this, mBluetoothAdapter, mBluetoothGattCallback);
         }else {
             showToast("请确保蓝牙已经开启并重试。");
         }
@@ -223,6 +232,10 @@ public abstract class BlueToothActivity extends BaseActivity {
         return sb.toString();
     }
 
+    /**
+     * 蓝牙连接意外断开时自动重连。
+     * @return 是否重连成功。
+     */
     private boolean reconnectGatt() {
         showLog("reconnecting......");
         boolean isSuccess=false;
@@ -264,9 +277,6 @@ public abstract class BlueToothActivity extends BaseActivity {
     public void closeGatt(){
         onGattClose();
         if(mBluetoothGatt!=null){
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                mBluetoothGatt.abortReliableWrite();
-            }
             mBluetoothGatt.disconnect();
             mBluetoothGatt.close();
             mBluetoothGatt=null;
@@ -277,43 +287,30 @@ public abstract class BlueToothActivity extends BaseActivity {
     protected String displayBytesToHexString(byte[] data){
         StringBuffer sb=new StringBuffer();
         for(byte b:data){
-//            String s = Integer.toHexString(b&0xff);
-//            if(s.length()<2){
-//                sb.append("0x0");
-//            }else {
-//                sb.append("0x");
-//            }
             sb.append(String.format("%02X",b));
             sb.append(" ");
         }
         return sb.toString().trim();
     }
 
-    protected boolean sendCommandToLed(){
+    private boolean sendCommandToLed(){
         boolean isSuccess=false;
-        int index = 15;
-        while (index != 10) {
-            mCommandData[index] = getRandomDigit();
-            index--;
-        }
+        int random = (int)(Math.random()*65535) ;
+        mCommandData[11] = (byte)((random>>1) & 0xff) ;
+        mCommandData[12] = (byte)((random>>2) & 0xff) ;
+        mCommandData[13] = (byte)((random>>3) & 0xff) ;
+        mCommandData[14] = (byte)((random>>4) & 0xff) ;
+        mCommandData[15] = (byte)((random>>5) & 0xff) ;
         aes.cipher(mCommandData, mDataSend);
-//        showLog("data to be send to led device:");
-//        displayBytesToHexString(mDataSend);
-        mBluetoothGatt.beginReliableWrite();
         if(mCharWrite != null && mCharWrite.setValue(mDataSend)){
+
             if(mBluetoothGatt.writeCharacteristic(mCharWrite)){
-                showLog("send data-----success");
                 isSuccess=true;
             }else {
                 showLog("send data-----fail");
             }
         }else {
             showLog("mCharWrite.setValue(out)-----fail");
-        }
-        if(!isSuccess){
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                mBluetoothGatt.abortReliableWrite();
-            }
         }
         return isSuccess;
     }
