@@ -228,7 +228,7 @@ public class MainActivity extends BlueToothActivity {
                             }
                         }
                         if(isCharWriteFound&&mNotifyChars.size()>0){
-//                            mCharWrite.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);//怀疑会导致重复发包的情况，禁掉。
+//                            mCharWrite.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);//怀疑会导致重复发包的情况。
                             mCharWrite.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
                             isSuccess=true;
                             //有坑，必须在主线程中设置notify char. by leo 5月9日

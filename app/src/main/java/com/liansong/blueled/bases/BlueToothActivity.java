@@ -45,7 +45,7 @@ public abstract class BlueToothActivity extends BaseActivity {
     protected static final String CHARACTER_WRITE_UUID ="d44bc439-abfd-45a2-b575-925416129600";
     protected static final String DESCRIPTOR_UUID ="00002902-0000-1000-8000-00805f9b34fb";
     /**
-     * 发送给蓝牙的数据的长度
+     * 蓝牙的数据的长度
      */
     protected static final int DATA_LEN=16;
     protected BluetoothGattService mGattService;
@@ -65,7 +65,7 @@ public abstract class BlueToothActivity extends BaseActivity {
      */
     protected byte[] mDataSend=new byte[DATA_LEN];
     /**
-     * 断线后重新链接蓝牙的操作单位。
+     * 断线后重新链接蓝牙的执行单位。
      */
     protected Runnable mRunnableReconnect=new Runnable() {
         @Override
@@ -274,7 +274,7 @@ public abstract class BlueToothActivity extends BaseActivity {
         }
     }
 
-    protected void displayBytesToHexString(byte[] data){
+    protected String displayBytesToHexString(byte[] data){
         StringBuffer sb=new StringBuffer();
         for(byte b:data){
 //            String s = Integer.toHexString(b&0xff);
@@ -286,7 +286,7 @@ public abstract class BlueToothActivity extends BaseActivity {
             sb.append(String.format("%02X",b));
             sb.append(" ");
         }
-        showLog(sb.toString().trim());
+        return sb.toString().trim();
     }
 
     protected boolean sendCommandToLed(){
