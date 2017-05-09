@@ -45,7 +45,6 @@ public class MainActivity extends BlueToothActivity {
     private Button btn_clearLog;
     private ArrayList<String> arr_records =new ArrayList<>();
     private boolean isTiming;
-
     private boolean isCharWriteFound;
     private boolean isCharNotifyFound;
     /**
@@ -105,29 +104,6 @@ public class MainActivity extends BlueToothActivity {
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.main_menu,menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()){
-            case android.R.id.home:
-                onBackPressed();
-                break;
-            case R.id.main_menu_scan_dev:
-                scanLeDevices();
-                break;
-            default:
-                break;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-
-
-    @Override
     protected void initListener() {
         mLed1.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -160,6 +136,31 @@ public class MainActivity extends BlueToothActivity {
         });
 
     }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main_menu,menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()){
+            case android.R.id.home:
+                onBackPressed();
+                break;
+            case R.id.main_menu_scan_dev:
+                scanLeDevices();
+                break;
+            default:
+                break;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+
+
+
 
     private void litLed(int ledIndex, boolean isToLit) {
         int value=isToLit?1:0;
@@ -206,19 +207,18 @@ public class MainActivity extends BlueToothActivity {
                 }
             }
 
+
+            //此处有坑：onServicesDiscovered 回调里不能直接执行 write /readDataFromCharacteristic() 或者 enableNotificationOfCharacteristic之类的，而要放到主线程里执行，如 handler.post( … );
             @Override
-            public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+            public void onServicesDiscovered(final BluetoothGatt gatt, int status) {
                 boolean isSuccess=false;
                 if(status==BluetoothGatt.GATT_SUCCESS){
                     showLog("onServicesDiscovered:");
                     mGattService = gatt.getService(UUID.fromString(SERVICE_UUID));
                     if(mGattService!=null){
-                        showLog("target service found");
                         List<BluetoothGattCharacteristic> characteristics = mGattService.getCharacteristics();
-                        showLog("iterating characteristics:");
                         mNotifyChars.clear();
                         for(BluetoothGattCharacteristic characteristic:characteristics){
-                            showLog("char uuid ="+characteristic.getUuid().toString());
                             if(characteristic.getUuid().toString().equals(CHARACTER_WRITE_UUID)){
                                 mCharWrite=characteristic;
                                 isCharWriteFound=true;
@@ -228,10 +228,16 @@ public class MainActivity extends BlueToothActivity {
                         }
                         if(isCharWriteFound&&mNotifyChars.size()>0){
                             mCharWrite.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
-                            if(setNextNotifyChar(gatt)){
-                                showLog("write char is found and the first notify char is set.");
-                                isSuccess=true;
-                            }
+                            isSuccess=true;
+                            //有坑，必须在主线程中设置notify char. by leo 5月9日
+                            BaseApplication.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    //坚持只设置一个notify char，拒绝盲目跟风。by leo 5月9日
+                                    setNotifyChar(gatt,mNotifyChars.get(0));
+//                                    setNextNotifyChar(gatt);
+                                }
+                            });
                         }
                     }else {
                         showLog("target service not found");
@@ -248,23 +254,33 @@ public class MainActivity extends BlueToothActivity {
             public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
                 showLog("onDescriptorWrite");
                 super.onDescriptorWrite(gatt, descriptor, status);
-                setNextNotifyChar(gatt);
+//                setNextNotifyChar(gatt);
+                //坚持只设置一个notify char，拒绝盲目跟风。by leo 5月9日
+                mLedStatusViewer.setConnected(status==BluetoothGatt.GATT_SUCCESS);
+                showLog("LedViewer is synchronized with Led devices:"+mLedStatusViewer.isConnected());
             }
 
             @Override
             public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
                 showLog("onCharacteristicChanged:");
                 //不知道为什么同样的内容回返回两次，这里只使用一次回复，忽视另外一次回复。by leo 5月8日
-                isResponseToNotification=!isResponseToNotification;
-                if(isResponseToNotification){
-                    byte[] data = characteristic.getValue();
-                    if(data!=null){
-                        int len=data.length;
-                        if(len==DATA_LEN){
-                            aes.invCipher(data, mDataReceived);
-                            updateLedViews();
-                        }
+//                isResponseToNotification=!isResponseToNotification;
+//                if(isResponseToNotification){
+//
+//                }
+
+                byte[] data = characteristic.getValue();
+                if(data!=null){
+                    if(data.length==DATA_LEN){
+                        aes.invCipher(data, mDataReceived);
+                        updateLedViews();
                     }
+                }
+                //接收一次数据后线程休息50毫秒，以提高数据接收稳定性。by leo 5月9日
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
 
             }
@@ -272,35 +288,34 @@ public class MainActivity extends BlueToothActivity {
     }
 
 
-
-    protected boolean setNextNotifyChar(BluetoothGatt gatt){
-        boolean isSuccess=false;
-        int size = mNotifyChars.size();
-        if(size ==0){
-            isSuccess=true;
-            mLedStatusViewer.setConnected(true);
-            showLog("All the notify char have been set.");
-        }else {
-            showLog("the quantity of remaining notify chars to set:"+ size);
-            BluetoothGattCharacteristic notifyChar = mNotifyChars.get(0);
-            mNotifyChars.remove(0);
-            if(gatt.setCharacteristicNotification(notifyChar,true)){
-                BluetoothGattDescriptor descriptor = notifyChar.getDescriptor(UUID.fromString(DESCRIPTOR_UUID));
-                if(descriptor!=null){
-                    if(descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)){
-                        if(gatt.writeDescriptor(descriptor)){
-                            isSuccess=true;
-                        }
-                    }
-                }
-            }
-        }
-        if(!isSuccess){
-            closeGatt();
-            showLog("fail to set all the notify char, gatt close.");
-        }
-        return isSuccess;
-    }
+//    protected boolean setNextNotifyChar(BluetoothGatt gatt){
+//        boolean isSuccess=false;
+//        int size = mNotifyChars.size();
+//        if(size ==0){
+//            isSuccess=true;
+//            mLedStatusViewer.setConnected(true);
+//            showLog("All the notify char have been set.");
+//        }else {
+//            showLog("the quantity of remaining notify chars to set:"+ size);
+//            BluetoothGattCharacteristic notifyChar = mNotifyChars.get(0);
+//            mNotifyChars.remove(0);
+//            if(gatt.setCharacteristicNotification(notifyChar,true)){
+//                BluetoothGattDescriptor descriptor = notifyChar.getDescriptor(UUID.fromString(DESCRIPTOR_UUID));
+//                if(descriptor!=null){
+//                    if(descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)){
+//                        if(gatt.writeDescriptor(descriptor)){
+//                            isSuccess=true;
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//        if(!isSuccess){
+//            closeGatt();
+//            showLog("fail to set all the notify char, gatt close.");
+//        }
+//        return isSuccess;
+//    }
 
     private synchronized void updateLedViews() {
         runOnUiThread(new Runnable() {
@@ -315,11 +330,11 @@ public class MainActivity extends BlueToothActivity {
                     switch (mDataReceived[9]){
                         case 0:
                             isToLitLed1=false;
-                            showLog("Led 1 is about to off.");
+                            showLog("Led 1 off.");
                             break;
                         case 1:
                             isToLitLed1=true;
-                            showLog("Led 1 is about to lit.");
+                            showLog("Led 1 lit.");
                             break;
                         default:
                             break;
@@ -327,11 +342,11 @@ public class MainActivity extends BlueToothActivity {
                     switch (mDataReceived[10]){
                         case 0:
                             isToLitLed2=false;
-                            showLog("Led 2 is about to off.");
+                            showLog("Led 2 off.");
                             break;
                         case 1:
                             isToLitLed2=true;
-                            showLog("Led 2 is about to lit.");
+                            showLog("Led 2 lit.");
                             break;
                         default:
                             break;
@@ -349,12 +364,13 @@ public class MainActivity extends BlueToothActivity {
         boolean isLedOneLit=mLed1.isLit();
         boolean isLedTwoLit=mLed2.isLit();
         if(!isTiming){
-            //在未开始计时的情况下，两盏灯都没亮的情况下，找出没亮，然而将被点亮的led，开始计时。
+            //在计时未开始且两盏灯都没亮的情况下，找出将被点亮的led，开始计时。
             if(!isLedOneLit&&!isLedTwoLit){
-                if(isToLitLed1){
+                //只打开led1或led2其中一盏，才符合计时开始的条件。
+                if(isToLitLed1&&!isToLitLed2){
                     ledTrigger='A';
                     startTiming();
-                }else if(isToLitLed2){
+                }else if(isToLitLed2&&!isToLitLed1){
                     ledTrigger='B';
                     startTiming();
                 }
@@ -399,21 +415,27 @@ public class MainActivity extends BlueToothActivity {
 
                 @Override
                 protected void onProgressUpdate(Long... values) {
-                    tv_timing.setText(convertLongMillisToSeconds(values[0]));
+                    tv_timing.setText(toTimingFormat(values[0]));
                 }
 
                 @Override
                 protected void onPostExecute(Void aVoid) {
                     StringBuffer sb=new StringBuffer();
-                    sb.append("计时结束，").append("从").append(ledTrigger).append("到").append(ledTerminate).append(",间隔时间：").append(tv_timing.getText().toString());
+                    sb.append("计时结束，")
+                            .append("从")
+                            .append(ledTrigger)
+                            .append("到")
+                            .append(ledTerminate)
+                            .append(",间隔时间：")
+                            .append(tv_timing.getText().toString());
                     updateConsole(sb.toString());
                 }
-            }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+            }.executeOnExecutor(AsyncTask.SERIAL_EXECUTOR);
         }
     }
 
     private void updateConsole(final String msg) {
-        runOnUiThread(new Runnable() {
+        BaseApplication.post(new Runnable() {
             @Override
             public void run() {
                 arr_records.add(msg);

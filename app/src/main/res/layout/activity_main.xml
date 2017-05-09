@@ -35,7 +35,8 @@
         android:layout_margin="@dimen/margin_small"
         android:background="@drawable/shape_type_1"
         android:id="@+id/main_btn_clear_log"
-        android:text="Clear Log"
+        android:textAllCaps="false"
+        android:text="@string/clear_log"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 </LinearLayout>

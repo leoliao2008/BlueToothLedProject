@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.content.Intent;
@@ -21,6 +22,7 @@ import com.liansong.blueled.utils.AlertDialogueUtils;
 
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.UUID;
 
 import csh.tiro.cc.aes;
 
@@ -190,7 +192,7 @@ public abstract class BlueToothActivity extends BaseActivity {
         }
     }
 
-    protected String convertLongMillisToSeconds(Long millis) {
+    protected String toTimingFormat(Long millis) {
         int min= (int) (millis/1000/60);
         int sec= (int) (millis - min * 60*1000)/1000;
         int mil= (int) (millis-min*1000*60-sec*1000)/10;
@@ -251,6 +253,7 @@ public abstract class BlueToothActivity extends BaseActivity {
                     }
                 }else {
                     showLog("bluetoothDevice == null, abort re-connect.");
+                    BaseApplication.removeCallback(mRunnableReconnect);
                 }
             }
         }else {
@@ -279,13 +282,13 @@ public abstract class BlueToothActivity extends BaseActivity {
     protected void displayBytesToHexString(byte[] data){
         StringBuffer sb=new StringBuffer();
         for(byte b:data){
-            String s = Integer.toHexString(b&0xff);
-            if(s.length()<2){
-                sb.append("0x0");
-            }else {
-                sb.append("0x");
-            }
-            sb.append(s);
+//            String s = Integer.toHexString(b&0xff);
+//            if(s.length()<2){
+//                sb.append("0x0");
+//            }else {
+//                sb.append("0x");
+//            }
+            sb.append(String.format("%02X",b));
             sb.append(" ");
         }
         showLog(sb.toString().trim());
@@ -302,7 +305,6 @@ public abstract class BlueToothActivity extends BaseActivity {
         showLog("data to be written:");
         displayBytesToHexString(out);
         if(mCharWrite != null && mCharWrite.setValue(out)){
-            showLog("mCharWrite.setValue(out)-----success");
             if(getBluetoothGatt().writeCharacteristic(mCharWrite)){
                 showLog("getBluetoothGatt().writeCharacteristic-----success");
             }else {
@@ -311,6 +313,26 @@ public abstract class BlueToothActivity extends BaseActivity {
         }else {
             showLog("mCharWrite.setValue(out)-----fail");
         }
+    }
+
+    protected boolean setNotifyChar(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+        boolean isSuccess=false;
+        if(mCharNotify!=null){
+            gatt.setCharacteristicNotification(mCharNotify,false);
+            mCharNotify=null;
+        }
+        if(gatt.setCharacteristicNotification(characteristic,true)){
+            BluetoothGattDescriptor descriptor = characteristic.getDescriptor(UUID.fromString(DESCRIPTOR_UUID));
+            if(descriptor!=null){
+                if(descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)){
+                    isSuccess=gatt.writeDescriptor(descriptor);
+                }
+            }
+        }
+        if(isSuccess){
+            mCharNotify=characteristic;
+        }
+        return isSuccess;
     }
 
     private byte getRandomDigit() {
