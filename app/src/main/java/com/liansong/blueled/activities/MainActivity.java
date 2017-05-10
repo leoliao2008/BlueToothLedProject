@@ -21,18 +21,15 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
-
 import com.liansong.blueled.R;
 import com.liansong.blueled.bases.BaseApplication;
 import com.liansong.blueled.bases.BlueToothActivity;
 import com.liansong.blueled.customized.LedStatusViewer;
 import com.liansong.blueled.customized.LedView;
 import com.liansong.blueled.utils.AlertDialogueUtils;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
 import csh.tiro.cc.aes;
 
 public class MainActivity extends BlueToothActivity {
