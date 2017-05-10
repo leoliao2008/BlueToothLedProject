@@ -175,7 +175,7 @@ public class MainActivity extends BlueToothActivity {
             default:
                 break;
         }
-        BaseApplication.post(mRunnableSendCommand);
+        BaseApplication.post(mRunnableSendRequest);
     }
 
 
@@ -228,14 +228,14 @@ public class MainActivity extends BlueToothActivity {
                             }
                         }
                         if(isCharWriteFound&&mNotifyChars.size()>0){
-                            mCharWrite.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);//怀疑会导致重复发包的情况。
+                            mCharWrite.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
                             isSuccess=true;
                             //有坑，必须在主线程中设置notify char.
                             BaseApplication.post(new Runnable() {
                                 @Override
                                 public void run() {
-                                    setNotifyChar(gatt,mNotifyChars.get(0));
-//                                    setNextNotifyChar(gatt); 只设置一个notify char会无法收到回复，原因未知。
+//                                    setNotifyChar(gatt,mNotifyChars.get(0)); //只设置一个notify char会无法收到回复，原因未知。
+                                    setNextNotifyChar(gatt);
                                 }
                             });
                         }
@@ -254,13 +254,18 @@ public class MainActivity extends BlueToothActivity {
             public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
                 showLog("onDescriptorWrite");
                 super.onDescriptorWrite(gatt, descriptor, status);
-                setNextNotifyChar(gatt);
+                if(mNotifyChars.size()>0){
+                    setNextNotifyChar(gatt);
+                }else {
+                    mLedStatusViewer.setConnected(true);
+                    showLog("All the notify char have been set.");
+                }
             }
 
 
             @Override
             public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-               //不知道为什么每一次请求会引起两次回复，这里只使用一次回复，忽视另外一次回复。
+               //不知道为什么每一次请求会引起两次回复，这里只使用一次回复，忽略另外一次回复。
                 isResponseToNotification=!isResponseToNotification;
                 if(isResponseToNotification){
                     byte[] data = characteristic.getValue();
@@ -283,40 +288,6 @@ public class MainActivity extends BlueToothActivity {
         };
     }
 
-
-    /**
-     * 逐个地把所有符合notify属性的char都设置notification.
-     * @param gatt
-     * @return
-     */
-    protected boolean setNextNotifyChar(BluetoothGatt gatt){
-        boolean isSuccess=false;
-        int size = mNotifyChars.size();
-        if(size !=0){
-            showLog("the quantity of remaining notify chars to set:"+ size);
-            BluetoothGattCharacteristic notifyChar = mNotifyChars.get(0);
-            mNotifyChars.remove(0);
-            if(gatt.setCharacteristicNotification(notifyChar,true)){
-                BluetoothGattDescriptor descriptor = notifyChar.getDescriptor(UUID.fromString(DESCRIPTOR_UUID));
-                if(descriptor!=null){
-                    if(descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)){
-                        if(gatt.writeDescriptor(descriptor)){
-                            isSuccess=true;
-                        }
-                    }
-                }
-            }
-        }else {
-            isSuccess=true;
-            mLedStatusViewer.setConnected(true);
-            showLog("All the notify char have been set.");
-        }
-        if(!isSuccess){
-            closeGatt();
-            showLog("fail to set all the notify char, gatt close.");
-        }
-        return isSuccess;
-    }
 
     /**
      * 在主线程中更新led的状态。

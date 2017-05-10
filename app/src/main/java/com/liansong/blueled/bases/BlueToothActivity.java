@@ -21,7 +21,6 @@ import android.widget.Toast;
 import com.liansong.blueled.utils.AlertDialogueUtils;
 
 import java.util.ArrayList;
-import java.util.Random;
 import java.util.UUID;
 
 import csh.tiro.cc.aes;
@@ -51,7 +50,6 @@ public abstract class BlueToothActivity extends BaseActivity {
     protected BluetoothGattService mGattService;
     protected BluetoothGattCharacteristic mCharWrite;
     protected BluetoothGattCharacteristic mCharNotify;
-    private Random mRandom=new Random();
     /**
      * 用来存放蓝牙设备发送回来的信息
      */
@@ -74,9 +72,9 @@ public abstract class BlueToothActivity extends BaseActivity {
         }
     };
     /**
-     * 发送命令到蓝牙的执行单位。
+     * 请求操纵led的执行单位。
      */
-    protected Runnable mRunnableSendCommand=new Runnable() {
+    protected Runnable mRunnableSendRequest =new Runnable() {
         @Override
         public void run() {
             sendCommandToLed();
@@ -293,6 +291,40 @@ public abstract class BlueToothActivity extends BaseActivity {
         return sb.toString().trim();
     }
 
+    /**
+     * 逐个地把所有符合notify属性的char都设置notification.
+     * @param gatt
+     * @return
+     */
+    protected boolean setNextNotifyChar(BluetoothGatt gatt){
+        boolean isSuccess=false;
+        int size = mNotifyChars.size();
+        showLog("the quantity of remaining notify chars to set:"+ size);
+        if(size>0){
+            BluetoothGattCharacteristic notifyChar = mNotifyChars.get(0);
+            if(notifyChar!=null){
+                mNotifyChars.remove(0);
+                if(gatt.setCharacteristicNotification(notifyChar,true)){
+                    BluetoothGattDescriptor descriptor = notifyChar.getDescriptor(UUID.fromString(DESCRIPTOR_UUID));
+                    if(descriptor!=null){
+                        if(descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)){
+                            if(gatt.writeDescriptor(descriptor)){
+                                isSuccess=true;
+                            }
+                        }
+                    }
+                }
+            }
+            if(!isSuccess){
+                closeGatt();
+                showLog("fail to set all the notify char, gatt close.");
+            }
+        }else {
+            isSuccess=true;
+        }
+        return isSuccess;
+    }
+
     private boolean sendCommandToLed(){
         boolean isSuccess=false;
         int random = (int)(Math.random()*65535) ;
@@ -347,10 +379,6 @@ public abstract class BlueToothActivity extends BaseActivity {
     protected void onDestroy() {
         super.onDestroy();
         closeGatt();
-    }
-
-    private byte getRandomDigit() {
-        return (byte) (mRandom.nextInt(128)&0xff);
     }
 
     protected abstract void onGattClose();
