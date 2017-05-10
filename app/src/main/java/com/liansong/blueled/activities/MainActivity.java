@@ -434,8 +434,6 @@ public class MainActivity extends BlueToothActivity {
         updateConsole(msg);
     }
 
-
-
     @Override
     protected void onGattClose() {
         mLedStatusViewer.setConnected(false);
