@@ -107,7 +107,7 @@ public class MainActivity extends BlueToothActivity {
                 if(mLedStatusViewer.isConnected()){
                     litLed(0,!mLed1.isLit());
                 }else {
-                    showLog("感应灯未链接，请先尝试链接感应灯。");
+                    updateConsole("感应灯未链接，请先尝试链接感应灯。");
                 }
             }
         });
@@ -118,7 +118,7 @@ public class MainActivity extends BlueToothActivity {
                 if(mLedStatusViewer.isConnected()){
                     litLed(1,!mLed2.isLit());
                 }else {
-                    showLog("感应灯未链接，请先尝试链接感应灯。");
+                    updateConsole("感应灯未链接，请先尝试链接感应灯。");
                 }
             }
         });
@@ -185,6 +185,7 @@ public class MainActivity extends BlueToothActivity {
             @Override
             public void onConnectionStateChange(final BluetoothGatt gatt, int status, int newState) {
                 if(newState== BluetoothProfile.STATE_CONNECTED){
+                    updateConsole("正在连接Led......");
                     AlertDialogueUtils.dismissDialog();
                     showLog("Gatt connected.");
                     setBluetoothGatt(gatt);
@@ -255,6 +256,7 @@ public class MainActivity extends BlueToothActivity {
                     setNextNotifyChar(gatt);
                 }else {
                     mLedStatusViewer.setConnected(true);
+                    updateConsole("Led连接完成！");
                     showLog("All the notify char have been set.");
                 }
             }
@@ -263,14 +265,21 @@ public class MainActivity extends BlueToothActivity {
             @Override
             public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
                //不知道为什么每一次请求会引起两次回复，这里只使用一次回复，忽略另外一次回复。
-                isResponseToNotification=!isResponseToNotification;
-                if(isResponseToNotification){
-                    byte[] data = characteristic.getValue();
-                    if(data!=null){
-                        if(data.length==DATA_LEN){
-                            aes.invCipher(data, mDataReceived);
-                            updateLedViews();
-                        }
+//                isResponseToNotification=!isResponseToNotification;
+//                if(isResponseToNotification){
+//                    byte[] data = characteristic.getValue();
+//                    if(data!=null){
+//                        if(data.length==DATA_LEN){
+//                            aes.invCipher(data, mDataReceived);
+//                            updateLedViews();
+//                        }
+//                    }
+//                }
+                byte[] data = characteristic.getValue();
+                if(data!=null){
+                    if(data.length==DATA_LEN){
+                        aes.invCipher(data, mDataReceived);
+                        updateLedViews();
                     }
                 }
 
@@ -293,6 +302,11 @@ public class MainActivity extends BlueToothActivity {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                StringBuilder sb=new StringBuilder();
+                for(byte b:mDataReceived){
+                    sb.append("0x").append(String.format("%02X",b)).append(" ");
+                }
+                showLog(sb.toString().trim());
                 if(mDataReceived[0] == 'T' && mDataReceived[1] == 'R' && mDataReceived[2] == '1' && mDataReceived[3] == '7' &&
                    mDataReceived[4] == '0' && mDataReceived[5] == '3' && mDataReceived[6] == 'R' && mDataReceived[7] == '0' &&
                    mDataReceived[8] == '2'){
@@ -301,7 +315,7 @@ public class MainActivity extends BlueToothActivity {
                     switch (mDataReceived[9]){
                         case 0:
                             isToLitLed1=false;
-                            mCommandData[9]=0;//如果不这么操作，led有时会无法返回数据，原因未明。
+//                            mCommandData[9]=0;//如果不这么操作，led有时会无法返回数据，原因未明。
                             break;
                         case 1:
                             isToLitLed1=true;
@@ -312,7 +326,7 @@ public class MainActivity extends BlueToothActivity {
                     switch (mDataReceived[10]){
                         case 0:
                             isToLitLed2=false;
-                            mCommandData[10]=0;//如果不这么操作，led有时会无法返回数据，原因未明。
+//                            mCommandData[10]=0;//如果不这么操作，led有时会无法返回数据，原因未明。
                             break;
                         case 1:
                             isToLitLed2=true;
@@ -423,12 +437,12 @@ public class MainActivity extends BlueToothActivity {
 
     @Override
     protected void onShowLog(String msg) {
-        updateConsole(msg);
+//        updateConsole(msg);
     }
 
     @Override
     protected void onShowToast(String msg) {
-        updateConsole(msg);
+//        updateConsole(msg);
     }
 
     @Override

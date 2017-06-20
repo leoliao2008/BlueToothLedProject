@@ -78,7 +78,6 @@ public class AlertDialogueUtils {
         final TextView tv_scanning= (TextView) rootView.findViewById(R.id.scan_result_scanning);
         Button btn_stop= (Button) rootView.findViewById(R.id.scan_result_stop_scan);
         //init data
-        blueToothDeviceList.clear();
         scanResultAdapter = new ScanResultAdapter(blueToothDeviceList,callback,context);
         RecyclerView.LayoutManager layoutManager=new LinearLayoutManager(context,LinearLayoutManager.VERTICAL,false);
         recyclerView.setLayoutManager(layoutManager);
@@ -87,7 +86,14 @@ public class AlertDialogueUtils {
         leScanCallback = new BluetoothAdapter.LeScanCallback() {
             @Override
             public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord) {
-                updateScanView(new BlueToothBean(device,rssi));
+                //// TODO: 2017/6/20
+                if(!blueToothDeviceList.contains(device)){
+                    updateScanView(new BlueToothBean(device,rssi));
+                    if(device.getAddress().equals("08:7C:BE:E9:10:26")){
+                        stopScanDevice(tv_scanning,bluetoothAdapter,leScanCallback);
+                    }
+                }
+
             }
         };
         //init listeners
