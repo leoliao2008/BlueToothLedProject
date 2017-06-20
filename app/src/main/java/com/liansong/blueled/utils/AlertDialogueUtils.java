@@ -22,6 +22,7 @@ import com.liansong.blueled.adapters.ScanResultAdapter;
 import com.liansong.blueled.bases.BaseApplication;
 import com.liansong.blueled.bases.BlueToothActivity;
 import com.liansong.blueled.beans.BlueToothBean;
+import com.liansong.blueled.data.Constants;
 
 import java.util.LinkedHashSet;
 
@@ -86,11 +87,11 @@ public class AlertDialogueUtils {
         leScanCallback = new BluetoothAdapter.LeScanCallback() {
             @Override
             public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord) {
-                //// TODO: 2017/6/20
                 if(!blueToothDeviceList.contains(device)){
                     updateScanView(new BlueToothBean(device,rssi));
-                    if(device.getAddress().equals("08:7C:BE:E9:10:26")){
+                    if(device.getAddress().equals(Constants.MAC_ADDRESS)){
                         stopScanDevice(tv_scanning,bluetoothAdapter,leScanCallback);
+                        ToastUtil.showToast("扫描到目标设备！");
                     }
                 }
 
@@ -150,8 +151,16 @@ public class AlertDialogueUtils {
                                         final TextView tv_scanning,
                                         final BluetoothAdapter bluetoothAdapter,
                                         final BluetoothAdapter.LeScanCallback leScanCallback) {
+
         if(!isScanning){
             isScanning =true;
+            for(BlueToothBean bean:blueToothDeviceList){
+                if(bean.getDevice().getAddress().equals(Constants.MAC_ADDRESS)){
+                    ToastUtil.showToast("设备已经在清单上，退出当前扫描。");
+                    stopScanDevice(tv_scanning,bluetoothAdapter,leScanCallback);
+                    return;
+                }
+            }
             startAnimation(context,tv_scanning);
             bluetoothAdapter.startLeScan(leScanCallback);
             BaseApplication.postDelay(new Runnable() {
