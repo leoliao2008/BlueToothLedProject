@@ -232,7 +232,7 @@ public class MainActivity extends BlueToothActivity {
                             BaseApplication.post(new Runnable() {
                                 @Override
                                 public void run() {
-//                                    setNotifyChar(gatt,mNotifyChars.get(0)); //只设置一个notify char会无法收到回复，原因未知。
+//                                    setNotifyChar(gatt,mNotifyChars.get(0)); //只设置一个notify char
                                     setNextNotifyChar(gatt);
                                 }
                             });
@@ -252,6 +252,11 @@ public class MainActivity extends BlueToothActivity {
             public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
                 showLog("onDescriptorWrite");
                 super.onDescriptorWrite(gatt, descriptor, status);
+//                if(status==BluetoothGatt.GATT_SUCCESS){
+//                    mLedStatusViewer.setConnected(true);
+//                    updateConsole("Led连接完成！");
+//                    showLog("All the notify char have been set.");
+//                }
                 if(mNotifyChars.size()>0){
                     setNextNotifyChar(gatt);
                 }else {
@@ -414,6 +419,7 @@ public class MainActivity extends BlueToothActivity {
                             .append(",间隔时间：")
                             .append(tv_timing.getText().toString());
                     updateConsole(sb.toString());
+                    tv_timing.setText("00:00.00");
                 }
             }.executeOnExecutor(AsyncTask.SERIAL_EXECUTOR);
         }
