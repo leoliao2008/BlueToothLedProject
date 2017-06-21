@@ -148,6 +148,9 @@ public class MainActivity extends BlueToothActivity {
             case R.id.main_menu_scan_dev:
                 scanLeDevices();
                 break;
+            case R.id.main_menu_disconnect_blue_tooth:
+                closeGatt();
+                break;
             default:
                 break;
         }
@@ -239,10 +242,12 @@ public class MainActivity extends BlueToothActivity {
                         }
                     }else {
                         showLog("target service not found");
+                        updateConsole("Target service not found");
                     }
                 }
                 if(!isSuccess){
                     showLog("Fail to connect sensor led. Close gatt.");
+                    updateConsole("Fail to init sensor led. Gatt closed.");
                     closeGatt();
                 }
             }

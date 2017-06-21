@@ -5,5 +5,9 @@
         android:id="@+id/main_menu_scan_dev"
         android:title="扫描蓝牙设备"
         app:showAsAction="never"/>
+    <item
+        android:id="@+id/main_menu_disconnect_blue_tooth"
+        android:title="断开蓝牙设备"
+        app:showAsAction="never"/>
 
 </menu>
