@@ -47,11 +47,11 @@ public class MainActivity extends BlueToothActivity {
     /**
      * 触发计时开始的led
      */
-    private char ledTrigger;
+    private char startLed;
     /**
      * 触发计时终止的led
      */
-    private char ledTerminate;
+    private char stopLed;
     private boolean isResponseToNotification;
 
 
@@ -353,34 +353,48 @@ public class MainActivity extends BlueToothActivity {
 
     /**
      * 判断是否启动或关闭计时。
-     * @param isToLitLed1
-     * @param isToLitLed2
+     * @param isToLitA
+     * @param isToLitB
      */
-    private void shouldUpdateTimingView(boolean isToLitLed1,boolean isToLitLed2){
-        boolean isLedOneLit=mLed1.isLit();
-        boolean isLedTwoLit=mLed2.isLit();
+    private void shouldUpdateTimingView(boolean isToLitA,boolean isToLitB){
+        boolean isALit=mLed1.isLit();
+        boolean isBLit=mLed2.isLit();
         if(!isTiming){
             //在计时未开始且两盏灯都没亮的情况下，找出将被点亮的led，开始计时。
-            if(!isLedOneLit&&!isLedTwoLit){
+            if(!isALit&&!isBLit){
                 //只打开led1或led2其中一盏，才符合计时开始的条件。
-                if(isToLitLed1&&!isToLitLed2){
-                    ledTrigger='A';
+                if(isToLitA&&!isToLitB){
+                    startLed ='A';
                     startTiming();
-                }else if(isToLitLed2&&!isToLitLed1){
-                    ledTrigger='B';
+                }else if(isToLitB&&!isToLitA){
+                    startLed ='B';
                     startTiming();
                 }
             }
 
         }else {
-            //在计时已经开始的情况下，找出状态将发生变化的led，判断是由哪盏灯引起的计时终止。
-            if(isLedOneLit!=isToLitLed1){
-                ledTerminate='A';
+            //7.20修改逻辑：当A被打开时，就算放开手,计时也不会停止,只有当再感应到B被打开或者再感应一次A被打开时,才停止计时。B同理。
+            if(isALit&&isToLitB){
+                stopLed ='B';
                 stopTiming();
-            }else if(isLedTwoLit!=isToLitLed2){
-                ledTerminate='B';
+            }else if(isBLit&&isToLitA){
+                stopLed ='A';
+                stopTiming();
+            }else if(isALit&&isToLitA){
+                stopLed ='A';
+                stopTiming();
+            }else if(isBLit&&isToLitB){
+                stopLed ='B';
                 stopTiming();
             }
+            //在计时已经开始的情况下，找出状态将发生变化的led，判断是由哪盏灯引起的计时终止。
+//            if(isALit!=isToLitA){
+//                stopLed ='A';
+//                stopTiming();
+//            }else if(isBLit!=isToLitB){
+//                stopLed ='B';
+//                stopTiming();
+//            }
         }
     }
 
@@ -418,9 +432,9 @@ public class MainActivity extends BlueToothActivity {
                     StringBuffer sb=new StringBuffer();
                     sb.append("计时结束，")
                             .append("从")
-                            .append(ledTrigger)
+                            .append(startLed)
                             .append("到")
-                            .append(ledTerminate)
+                            .append(stopLed)
                             .append(",间隔时间：")
                             .append(tv_timing.getText().toString());
                     updateConsole(sb.toString());
